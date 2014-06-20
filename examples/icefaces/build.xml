@@ -14,7 +14,7 @@
   ~ governing permissions and limitations under the License.
   -->
 
-<project name="icepdf-viewer" default="tomcat6.0">
+<project name="icepdf-viewer" default="build.war">
 
     <property file="build.properties"/>
 
@@ -31,13 +31,14 @@
                 "
             />
 
-    <property name="common.build.file" location="../../etc/build-common.xml"/>
-
+    <property name="common.build.file" location="../etc/build-common.xml"/>
+    <property name="build.lib.dir" location="../../lib"/>
     <import file="${common.build.file}"/>
 
     <property name="proj.war.lib.dir" location="./lib/"/>
 
     <property name="icepdf.lib.dir" location="../../lib/"/>
+    <property name="app.lib.dir" location="./alib/"/>
 
     <!-- jars needed for form Facelets -->
     <patternset id="faclets.jars"
@@ -69,9 +70,9 @@
     <target name="build.war" depends="compile">
 
         <copy todir="${app.lib.dir}" preservelastmodified="true">
-            <fileset dir="${icefaces.lib.dir}">
+        <!--    <fileset dir="${icefaces.lib.dir}">
                 <patternset refid="faclets.jars"/>
-            </fileset>
+            </fileset> -->
             <fileset dir="${icepdf.lib.dir}" includes="*.jar"/>
 
         </copy>
