@@ -1,0 +1,493 @@
+<project name="common">
+    
+    <property name="build.sysclasspath" value="ignore"/>
+    
+    <property name="build.dir" location="build"/>
+    <property name="dist.dir" location="dist"/>
+    <property name="src.dir" location="src"/>
+    <property name="web.content.dir" location="web"/>
+    <property name="web.inf.dir" location="${web.content.dir}/WEB-INF"/>
+    <property name="classes.dir" location="${web.inf.dir}/classes"/>
+    <property name="app.lib.dir" location="${web.inf.dir}/lib"/>
+    
+    <property name="compile.source" value="1.4"/>
+    <property name="compile.target" value="1.4"/>
+    <property name="compile.debug" value="true"/>
+    
+    <dirname property="build.common.basedir" file="${ant.file.common}"/>
+    <property name="icefaces.lib.dir" location="${build.common.basedir}/../../lib"/>
+    <property name="icefaces.build.facilities.dir" location="${build.common.basedir}/lib"/>
+    
+    <patternset id="liferay.xmls">
+        <exclude name="web.sunri.icefaces.xml"/>
+        <exclude name="web.sunri.icefaces.ce.xml"/>
+        <exclude name="web.sunri.icefaces.facelet.xml"/>
+        <exclude name="web.sunri.icefaces.portlet.xml"/>
+        <exclude name="web.sunri.icefaces.portlet.ahs.xml"/>
+        <exclude name="web.sunri.icefaces.portlet.tomcat.ahs.xml"/>
+        <exclude name="liferay-display.xml" unless="liferay"/>
+        <exclude name="liferay-plugin-package.properties" unless="liferay"/>
+        <exclude name="liferay-portlet.xml" unless="liferay"/>
+    </patternset>
+    
+    <patternset id="portlet.jar" includes="portlet.jar"/>
+    <patternset id="portlet.optional.jars">
+        <include name="el-ri.jar" if="el-ri"/>
+    </patternset>        
+    
+	<!--
+    <patternset id="portlet.deploy.jars">
+        <include name="icefaces-ahs.jar" if="icefaces.ahs.enabled"/>
+    </patternset>
+	-->
+    <patternset id="common.icefaces.lib.jars.to.include"
+                includes="
+                backport-util-concurrent.jar
+                commons-beanutils.jar
+                commons-collections.jar
+                commons-digester.jar
+                commons-discovery.jar
+                commons-el.jar
+                commons-fileupload.jar
+                commons-logging.jar
+                FastInfoset.jar
+                icefaces.jar
+                icefaces-comps.jar
+                el-api.jar
+                jstl.jar
+                xercesImpl.jar
+                xml-apis.jar
+    " >
+        <exclude name="el-api.jar"     if="jsf12" />
+        <exclude name="el-api.jar"     if="serverel" />
+		<exclude name="el-api.jar"	   if="noelapi" />
+        <exclude name="jstl.jar"       if="serverjsf" />
+		<exclude name="xercesImpl.jar" if="websphere6"/>
+		<exclude name="xml-apis.jar"   if="websphere6" />
+        <exclude name="xercesImpl.jar" if="jsf12" />
+        <exclude name="xercesImpl.jar" if="serverel" />
+        <exclude name="xml-apis.jar"   if="jsf12" />
+        <exclude name="xml-apis.jar"   if="serverel" />
+        <exclude name="icefaces.jar" if="just-ice" />
+        <include name="grizzly-compat.jar" if="glassfish" />
+    </patternset>
+    
+    <patternset id="additional.icefaces.lib.jars.to.include">
+        <include name="just-ice.jar" if="just-ice" />
+    </patternset>
+    
+    <patternset id="additional.compile.lib.jars"/>
+    
+    <patternset id="portlet.conf.files">
+        <include name="**/*.xml" if="liferay"/>
+    </patternset>
+    
+    <patternset id="jsf.compile.jars" >
+        <include name="myfaces-api.jar"  if="myfaces" />
+        <include name="myfaces-impl.jar" if="myfaces" />
+        <include name="commons-lang.jar" if="myfaces"/>
+        <include name="jsf-api.jar"  unless="myfaces" />
+        <include name="jsf-impl.jar" unless="myfaces" />
+    </patternset>
+    
+    <patternset id="jsf.deploy.jars" >
+        <include name="myfaces-api.jar"  if="myfaces" />
+        <include name="myfaces-impl.jar" if="myfaces" />
+        <include name="commons-lang.jar" if="myfaces"/>
+        <include name="jsf-api.jar"  unless="myfaces" />
+        <include name="jsf-impl.jar" unless="myfaces" />
+        <exclude name="jsf-api.jar"      if="jsf12" />
+        <exclude name="jsf-impl.jar"     if="jsf12" />
+        <include name="jsf-api-1.2.jar"  if="jsf12" unless="myfaces"/>
+        <include name="jsf-impl-1.2.jar" if="jsf12" unless="myfaces"/>
+        <exclude name="*.jar" if="serverjsf" />
+    </patternset>
+
+    <macrodef name="clean">
+        <sequential>
+            <delete includeemptydirs="true" quiet="true">
+                <fileset dir="${build.dir}"/>
+                <fileset dir="${dist.dir}"/>
+                <fileset dir="${classes.dir}" includes="**/*"/>
+                <fileset dir="${app.lib.dir}" includes="*"/>
+             </delete>
+        </sequential>
+    </macrodef>
+    
+    <macrodef name="compile">
+        <attribute name="src.copy.excludes" default=""/>
+        <attribute name="failonerror" default="true"/>
+        <attribute name="src.javac.excludes" default=""/>
+        <element name="add.javac.elements" optional="true"/>
+        
+        <sequential>
+            <mkdir dir="${src.dir}"/>
+            <mkdir dir="${classes.dir}"/>
+            <mkdir dir="${app.lib.dir}"/>
+            
+            <javac destdir="${classes.dir}" sourcepath=""
+                   source="${compile.source}" target="${compile.target}" debug="${compile.debug}" failonerror="@{failonerror}"
+            >
+                <src location="${src.dir}"/>
+                <include name="**/*.java"/>
+                <exclude name="@{src.javac.excludes}" />
+                <classpath>
+                    <fileset dir="${app.lib.dir}" includes="*.jar"/>
+                    <fileset dir="${icefaces.lib.dir}" >
+                        <patternset refid="common.icefaces.lib.jars.to.include"/>
+                        <patternset refid="additional.icefaces.lib.jars.to.include"/>
+                        <patternset refid="additional.compile.lib.jars"/>
+                        <patternset refid="jsf.compile.jars" />
+                        <patternset refid="portlet.jar"/>
+                    </fileset>
+                </classpath>
+                <add.javac.elements/>
+            </javac>
+            
+            <copy todir="${classes.dir}" preservelastmodified="true">
+                <fileset dir="${src.dir}" excludes="@{src.copy.excludes}"/>
+            </copy>
+        </sequential>
+    </macrodef>
+    
+    <macrodef name="build.war">
+        <attribute name="war.file.name" default="${ant.project.name}.war"/>
+        <attribute name="web.xml" default="${web.inf.dir}/web.xml"/>
+        <element name="add.filesets" optional="true"/>
+        
+        <sequential>
+            <mkdir dir="${dist.dir}"/>
+            
+            <copy todir="${web.inf.dir}" preservelastmodified="true">
+                <fileset dir="${build.common.basedir}" includes="web.xml">
+                    <present present="srconly" targetdir="${web.inf.dir}"/>
+                </fileset>
+            </copy>
+            
+            <copy file="@{web.xml}" tofile="${web.inf.dir}/web.xml" preservelastmodified="true" overwrite="true"/>
+            
+            <copy todir="${app.lib.dir}" preservelastmodified="true" verbose="true">
+                <fileset dir="${icefaces.lib.dir}">
+                    <patternset refid="common.icefaces.lib.jars.to.include"/>
+                    <patternset refid="additional.icefaces.lib.jars.to.include"/>
+                </fileset>
+                <fileset dir="${icefaces.lib.dir}">
+                    <patternset refid="jsf.deploy.jars" />
+                </fileset>
+            </copy>
+            
+            <war basedir="${web.content.dir}" destfile="${dist.dir}/@{war.file.name}" duplicate="fail"
+                 webxml="${web.inf.dir}/web.xml" excludes="WEB-INF/web.xml">
+                <add.filesets/>
+            </war>
+            
+        </sequential>
+    </macrodef>
+    
+    <macrodef name="build.portlet.war">
+        <attribute name="war.file.name" default="${ant.project.name}.war"/>
+        <attribute name="web.xml" default="./conf/web.sunri.icefaces.portlet.xml"/>
+        <attribute name="portlet.web.content.dir" default="build/web"/>
+        <attribute name="portlet.conf.dir" default="conf"/>    
+        <attribute name="portlet.conf.liferay.dir" default="conf"/>
+        <element name="add.filesets" optional="true"/>
+        
+        <sequential>
+            <mkdir dir="${dist.dir}"/>
+            
+            <copy todir="${web.inf.dir}" preservelastmodified="true">
+                <fileset dir="${build.common.basedir}" includes="web.xml">
+                    <present present="srconly" targetdir="${web.inf.dir}"/>
+                </fileset>
+            </copy>
+            
+            <copy todir="@{portlet.web.content.dir}">
+                <fileset dir="${web.content.dir}"/>
+            </copy>
+            
+            <copy todir="@{portlet.web.content.dir}/WEB-INF">
+                <fileset dir="@{portlet.conf.dir}">
+                    <include name="portlet.xml"/>
+                </fileset>
+                <fileset dir="@{portlet.conf.liferay.dir}">
+                    <patternset refid="liferay.xmls"/>
+                </fileset>
+            </copy>
+            
+            <copy file="@{web.xml}" tofile="@{portlet.web.content.dir}/WEB-INF/web.xml" preservelastmodified="true" overwrite="true"/>
+            
+            <copy todir="@{portlet.web.content.dir}/WEB-INF/lib" preservelastmodified="true">
+                <fileset dir="${icefaces.lib.dir}">
+                    <patternset refid="common.icefaces.lib.jars.to.include"/>
+                    <patternset refid="additional.icefaces.lib.jars.to.include"/>
+                    <!--patternset refid="portlet.deploy.jars"/-->
+                    <!--patternset refid="portlet.optional.jars"/-->
+                </fileset>
+                <fileset dir="${icefaces.lib.dir}">
+                    <patternset refid="jsf.deploy.jars" />
+                </fileset>
+            </copy>
+            
+
+            <war basedir="@{portlet.web.content.dir}" destfile="${dist.dir}/@{war.file.name}" duplicate="fail"
+                 webxml="@{portlet.web.content.dir}/WEB-INF/web.xml" excludes="WEB-INF/web.xml">
+                <add.filesets/>
+            </war>
+            
+        </sequential>
+    </macrodef>
+    
+    <target name="clean" description="clean the directory">
+        <clean/>
+    </target>
+    
+    <target name="compile">
+        <compile/>
+    </target>
+    
+    <target name="build.war" depends="compile">
+        <build.war/>
+    </target>
+    
+    <target name="portlet.compile">
+        
+        <ant target="compile">
+            <property name="portlet" value="true"/>
+        </ant>
+    </target>
+    
+    <target name="build.portlet.war" depends="portlet.compile">
+        <!--
+        <property name="portlet" value="true"/>
+        -->
+        <build.portlet.war/>
+    </target>
+    
+    <target name="make-help-doc">
+        <ant antfile="${build.common.basedir}/make-help.xml"/>
+    </target>
+    <!--
+    <target name="build.ear" depends="build.war">
+        <copy todir="conf" preservelastmodified="true">
+            <fileset dir="${build.common.basedir}" includes="application.xml">
+                <present present="srconly" targetdir="conf"/>
+            </fileset>
+            <filterset>
+                <filter token="project_name" value="${ant.project.name}"/>
+            </filterset>
+        </copy>
+        
+        <ear destfile="${dist.dir}/${ant.project.name}.ear" appxml="conf/application.xml">
+            <fileset dir="${dist.dir}" includes="*.war"/>
+        </ear>
+    </target>
+    -->
+    <!--
+    <target name="help" description="help information for building different versions of this application">
+        <echo level="info">
+    ***********************************
+     *       Help info               *
+    ***********************************
+build.war        - to build the web application archive (war file) for jsf1.1 version 
+            designed to be deployed under any server which supports jsf1.1 version of applications.
+            It has been tested on the following servers:
+            Tomcat5.x
+            JBoss4.0.5
+            OC4J
+            Weblogic 8.1
+            Weblogic9.2
+            Websphere6.0
+            Websphere6.1
+            
+build.jsf1.2.war  - to build the web application archive (war file) for jsf1.2 version
+            designed to be deployed under any server which supports jsf1.2 version of applications.
+            
+build.myfaces.war - to build the web application archive (war file) for myfaces version
+            designed to be deployed under any server which supports myfaces version of applications.
+            It has been tested on the following servers:
+            Tomcat5.x
+            JBoss4.0.5
+            OC4J
+            Weblogic 8.1
+            Weblogic9.2
+            Websphere6.0
+            Websphere6.1
+            
+* for advanced build of the application, 
+    please use "ant -projecthelp" and "ant help"
+    "ant paramhelp" for optional parameters passed to the build 
+        </echo>
+        
+    </target>
+    -->
+    <target name="paramhelp">
+        <echo level="info">
+    -Djsf11=""      compile application for jsf1.1 
+    -Djsf12=""      compile application for jsf1.2 
+    -Dmyfaces=""    compile application for myfaces 
+    -Djust-ice=""   compile application using just-ice.jar instead of icefaces.jar
+                    for applying icefaces with other technoloies, jsf/myfaces etc.
+                    in the same application
+    -Dserverel=""   for jetty6.1 deployment
+
+Combinations:            
+    -Djsf12="" -Dserverjsf=""   
+        for application deployment on server, Glassfishv2, pe9, and JBoss4.2
+        </echo>
+    </target>
+
+    <target name="myfaces" description="war file for myfaces version" depends="clean">
+        <antcall target="build.war">
+            <param name="myfaces" value=""/>
+        </antcall>
+    </target>
+    
+    <!-- server specified -->
+    <!--
+     -->
+    <target name="tomcat5.x" depends="build.war" description="Tomcat 5.x"/>
+    <target name="oc4j" depends="build.war" description="OC4J"/>
+    <target name="jboss4.0" depends="build.war" description="JBoss 4.0.5"/>
+    <target name="weblogic8.1" depends="build.war" description="Weblogic 8.1"/>
+    <target name="weblogic9.2" depends="build.war" description="Weblogic 9.2"/>
+	<target name="weblogic10" description="Weblogic 10">
+		<antcall target="build.war">
+			<param name="jsf12" value=""/>
+            <param name="noelapi" value=""/>
+			<param name="noelri" value=""/>
+        </antcall>
+	</target>
+    
+    <target name="websphere6.1" description="IBM Websphere 6.1">
+	       <antcall target="build.war">
+            <param name="websphere6" value=""/>
+        </antcall>
+	</target>
+    
+    <!--
+    <target name="build.portlet.jboss4.2.war" depends="compile">
+        <antcall target="build.portlet.war">
+            <param name="jsf12" value=""/>
+            <param name="serverjsf" value=""/>
+        </antcall>
+    </target>
+    -->
+    <!--
+    <target name="build.portlet.liferay.war"  depends="compile">
+        <property name="portlet" value="true"/>
+        <antcall target="build.portlet.war">
+            <param name="liferay" value=""/>
+        </antcall>
+    </target>
+    -->
+	
+	<target name="websphere6.0" description="IBM Websphere 6.0.2">
+        <antcall target="build.war">
+            <param name="websphere6" value=""/>
+        </antcall>	
+	</target>
+    <target name="websphere7" description="IBM Websphere 7">
+	       <antcall target="build.war">
+            <param name="websphere6" value=""/>
+			<param name="noelapi" value="" />
+			<param name="noelri" value=""/>
+        </antcall>
+	</target>	
+    <target name="tomcat6.0" description="build war file for Tomcat 6.0">
+        <antcall target="build.war">
+            <param name="jsf12" value=""/>
+			<param name="noelri" value=""/>
+        </antcall>
+        <echo message="For Help Information, please use 'ant help'"/>
+    </target>
+    <target name="jetty6.1" description="build war file for Jetty 6.1">
+        <antcall target="build.war">
+            <param name="serverel" value=""/>
+			<param name="noelri" value=""/>
+        </antcall>
+    </target>
+    <target name="jboss4.2" description="build war file for JBoss 4.2">
+        <antcall target="build.war">
+            <param name="jsf12" value=""/>
+            <param name="serverjsf" value=""/>
+			<param name="noelri" value=""/>
+        </antcall>
+    </target>
+	<target name="jboss5" description="build war file for JBoss 5">
+        <antcall target="build.war">
+            <param name="jsf12" value=""/>
+            <param name="serverjsf" value=""/>
+			<param name="noelri" value=""/>
+        </antcall>
+    </target>
+    <target name="glassfishv2" description="build war file for SUN Glassfish V2">
+        <antcall target="build.war">
+            <param name="glassfish" value=""/>
+            <param name="jsf12" value=""/>
+            <param name="serverjsf" value=""/>
+			<param name="noelri" value=""/>
+        </antcall>
+    </target>
+	<target name="glassfishv3" description="build war file for SUN Glassfish V3">
+        <antcall target="build.war">
+            <param name="glassfish" value=""/>
+            <param name="jsf12" value=""/>
+            <param name="serverjsf" value=""/>
+			<param name="noelri" value=""/>
+        </antcall>
+    </target>	
+    <target name="pe9" description="build war file for SUN Application Server PE9">
+        <antcall target="build.war">
+            <param name="jsf12" value=""/>
+            <param name="serverjsf" value=""/>
+        </antcall>
+    </target>
+    <patternset id="faclets.jars"
+                includes="
+                icefaces-facelets.jar
+                el-ri.jar
+                krysalis-jCharts-1.0.0-alpha-1.jar
+                "
+    />
+    <target name="build.facelet.war" depends="compile">
+        <build.war web.xml="conf/web.sunri.icefaces.facelet.xml"/>
+    </target>
+
+    <property name="help.name" value="icebuildext"/>
+    <target name="help">
+	<taskdef name="ice-help" classname="BuildParser" classpath="${icefaces.build.facilities.dir}/${help.name}.jar"/>
+	<ice-help/>
+
+    </target>
+    
+    <target name="build.time">
+	<taskdef name="build-time" classname="BuildTime" classpath="${icefaces.build.facilities.dir}/${help.name}.jar"/>
+	<build-time/>
+    </target>
+    <target name="create.xml">
+        <echo message="${property.config}"/>
+
+        <replaceregexp file="${web.xml}" match="param-value>jboss.properties" replace="param-value>${property.config}" byline="true"/>
+        <replaceregexp file="${web.xml}" match="param-value>activemq.properties" replace="param-value>${property.config}" byline="true"/>
+        <replaceregexp file="${web.xml}" match="param-value>jboss_ha.properties" replace="param-value>${property.config}" byline="true"/>
+        <replaceregexp file="${web.xml}" match="param-value>weblogic.properties" replace="param-value>${property.config}" byline="true"/>
+        <replaceregexp file="${web.xml}" match="param-value>weblogic.properties" replace="param-value>${property.config}" byline="true"/>
+        <replaceregexp file="${web.xml}" match="param-value>websphere.properties" replace="param-value>${property.config}" byline="true"/>
+        <replaceregexp file="${web.xml}" match="param-value>websphere_ha.properties" replace="param-value>${property.config}" byline="true"/>
+        <replaceregexp file="${web.xml}" match="param-value>glassfish.properties" replace="param-value>${property.config}" byline="true"/>
+    </target>
+    
+    <target name="change.flag" depends="check.all.flags">
+        <replaceregexp file="build.properties" match="#${flag}=(.*)" replace="${flag}=" byline="true"/>
+    </target>
+    
+    <target name="check.all.flags">
+        <replaceregexp file="build.properties" match="jsf12=(.*)" replace="#jsf12=" byline="true"/>
+        <replaceregexp file="build.properties" match="serverel=(.*)" replace="#serverel=" byline="true"/>
+        <replaceregexp file="build.properties" match="serverjsf=(.*)" replace="#serverjsf=" byline="true"/>
+        <replaceregexp file="build.properties" match="just-ice=(.*)" replace="#just-ice=" byline="true"/>
+        <replaceregexp file="build.properties" match="liferay=(.*)" replace="#liferay=" byline="true"/>
+        <replaceregexp file="build.properties" match="myfaces=(.*)" replace="#myfaces=" byline="true"/>
+
+    </target>    
+</project>
