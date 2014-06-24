@@ -2,6 +2,10 @@
 
 Local copy from icefaces svn
 
+## Running web viewer
+* clone this repository
+* change repository to examples/icefaces
+* run ant build to build war file
 
 ## TODO
 
