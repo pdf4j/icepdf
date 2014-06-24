@@ -35,10 +35,9 @@
     <property name="build.lib.dir" location="../../lib"/>
     <import file="${common.build.file}"/>
 
-    <property name="proj.war.lib.dir" location="./lib/"/>
+    <property name="proj.war.lib.dir" location="../../faceslib/"/>
 
     <property name="icepdf.lib.dir" location="../../lib/"/>
-    <property name="app.lib.dir" location="./alib/"/>
 
     <!-- jars needed for form Facelets -->
     <patternset id="faclets.jars"

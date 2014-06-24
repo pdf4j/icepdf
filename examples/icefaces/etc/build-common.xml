@@ -15,7 +15,7 @@
     <property name="compile.debug" value="true"/>
     
     <dirname property="build.common.basedir" file="${ant.file.common}"/>
-    <property name="icefaces.lib.dir" location="${build.common.basedir}/../../lib"/>
+    <property name="icefaces.lib.dir" location="${build.common.basedir}/../../../lib"/>
     <property name="icefaces.build.facilities.dir" location="${build.common.basedir}/lib"/>
     
     <patternset id="liferay.xmls">
