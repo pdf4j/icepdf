@@ -13,37 +13,29 @@
  * express or implied. See the License for the specific language
  * governing permissions and limitations under the License.
  */
-package org.icepdf.core.tag.query;
-
-import org.icepdf.core.tag.TaggedDocument;
-import org.icepdf.core.tag.TaggedImage;
-
-import java.util.ArrayList;
-import java.util.List;
+package org.icepdf.core.events;
 
 /**
- * @author mcollette
- * @since 4.0
+ * The PageProcessingEvent event marks the start and end of all page level events.
+ *
+ * @since 5.1.0
  */
-public class DocumentResult {
-    private TaggedDocument document;
-    private List images;
+@SuppressWarnings("serial")
+public class PageInitializingEvent extends java.util.EventObject {
 
-    DocumentResult(TaggedDocument doc, TaggedImage initial) {
-        document = doc;
-        images = new ArrayList(8);
-        addImage(initial);
+    private boolean interrupted;
+
+    public PageInitializingEvent(Object source, boolean interrupted) {
+        super(source);
+        this.interrupted = interrupted;
     }
 
-    void addImage(TaggedImage ti) {
-        images.add(ti);
-    }
-
-    public TaggedDocument getDocument() {
-        return document;
-    }
-
-    public List getImages() {
-        return images;
+    /**
+     * Indication if page processing was successful.
+     *
+     * @return true if processing event was successful otherwise false.
+     */
+    public boolean isInterrupted() {
+        return interrupted;
     }
 }

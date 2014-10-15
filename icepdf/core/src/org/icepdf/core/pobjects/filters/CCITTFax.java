@@ -20,16 +20,20 @@ import org.icepdf.core.io.BitStream;
 import org.icepdf.core.io.ZeroPaddedInputStream;
 import org.icepdf.core.pobjects.ImageStream;
 import org.icepdf.core.pobjects.Stream;
-import org.icepdf.core.tag.Tagger;
 import org.icepdf.core.util.Library;
 import org.icepdf.core.util.Utils;
 
+import javax.imageio.ImageIO;
+import javax.imageio.ImageReader;
+import javax.imageio.stream.ImageInputStream;
 import java.awt.*;
 import java.awt.image.*;
 import java.awt.image.renderable.ParameterBlock;
 import java.io.*;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -277,11 +281,11 @@ public class CCITTFax {
 
     static {
         try {
-            Class jaiClass = Class.forName("javax.media.jai.JAI");
+            Class<?> jaiClass = Class.forName("javax.media.jai.JAI");
             jaiCreate = jaiClass.getMethod("create", new Class[]{String.class, ParameterBlock.class});
-            Class ssClass = Class.forName("com.sun.media.jai.codec.SeekableStream");
+            Class<?> ssClass = Class.forName("com.sun.media.jai.codec.SeekableStream");
             ssWrapInputStream = ssClass.getMethod("wrapInputStream", new Class[]{InputStream.class, Boolean.TYPE});
-            Class roClass = Class.forName("javax.media.jai.RenderedOp");
+            Class<?> roClass = Class.forName("javax.media.jai.RenderedOp");
             roGetAsBufferedImage = roClass.getMethod("getAsBufferedImage", new Class[]{});
             USE_JAI_IMAGE_LIBRARY = true;
         } catch (Exception e) {
@@ -590,7 +594,7 @@ public class CCITTFax {
     }
 
     public static BufferedImage attemptDeriveBufferedImageFromBytes(
-            ImageStream stream, Library library, HashMap streamDictionary, Color fill) {
+            ImageStream stream, Library library, HashMap streamDictionary, Color fill) throws InvocationTargetException, IllegalAccessException {
         if (!USE_JAI_IMAGE_LIBRARY)
             return null;
 
@@ -607,6 +611,20 @@ public class CCITTFax {
         boolean hasHeader;
 
         InputStream input = stream.getDecodedByteArrayInputStream();
+        if (logger.isLoggable(Level.FINER)) {
+            try {
+                ImageInputStream imageInputStream = ImageIO.createImageInputStream(stream.getDecodedByteArrayInputStream());
+                Iterator<ImageReader> iter = ImageIO.getImageReadersByFormatName("TIFF");
+                ImageReader reader = null;
+                while (iter.hasNext()) {
+                    reader = iter.next();
+                    logger.finer("CCITTFaxDecode Image reader: " + reader + " canReastRaster: " + reader.canReadRaster());
+                }
+                imageInputStream.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
         if (input == null)
             return null;
         input = new ZeroPaddedInputStream(input);
@@ -625,14 +643,15 @@ public class CCITTFax {
             try {
                 input.close();
             } catch (IOException ioe) {
+                // keep quiet
             }
             return null;
         }
         input = bufferedInput;
 
-        BufferedImage img = null;
+        BufferedImage img;
 
-        byte[] fakeHeaderBytes = null;
+        byte[] fakeHeaderBytes;
         if (!hasHeader) {
             // Apparently if the stream dictionary contains all the necessary info about
             //   the TIFF data in the stream, then some encoders omit the standard
@@ -740,8 +759,6 @@ public class CCITTFax {
                     sin = new org.icepdf.core.io.SequenceInputStream(fakeHeaderBytesIn, input);
                     img = deriveBufferedImageFromTIFFBytes(sin, library, lengthOfCompressedData, width, height);
                     if (img != null) {
-                        if (Tagger.tagging)
-                            Tagger.tagImage("CCITTFaxDecode_JAI_TIFF_COMPRESSION=" + TIFF_COMPRESSION_NAMES[compression]);
                         break;
                     }
                 }
@@ -754,12 +771,6 @@ public class CCITTFax {
         }
 
         if (img != null) {
-            if (Tagger.tagging) {
-                Tagger.tagImage("HandledBy=CCITTFaxDecode_JAI");
-                Tagger.tagImage("CCITTFaxDecode_DecodeParms_BlackIs1=" + blackIs1);
-                Tagger.tagImage("CCITTFaxDecode_DecodeParms_K=" + k);
-                Tagger.tagImage("CCITTFaxDecode_hasHeader=" + hasHeader);
-            }
             img = applyImageMaskAndDecodeArray(img, imageMask, blackIs1, decodeArray, fill);
         }
 
@@ -774,7 +785,7 @@ public class CCITTFax {
      * @return RenderedImage if could derive one, else null
      */
     private static BufferedImage deriveBufferedImageFromTIFFBytes(
-            InputStream in, Library library, int compressedBytes, int width, int height) {
+            InputStream in, Library library, int compressedBytes, int width, int height) throws InvocationTargetException, IllegalAccessException {
         BufferedImage img = null;
         try {
             /*
@@ -783,10 +794,10 @@ public class CCITTFax {
             pb.add( s );
             javax.media.jai.RenderedOp op = javax.media.jai.JAI.create( "tiff", pb );
             */
-            Object com_sun_media_jai_codec_SeekableStream_s = ssWrapInputStream.invoke(null, new Object[]{in, Boolean.TRUE});
+            Object com_sun_media_jai_codec_SeekableStream_s = ssWrapInputStream.invoke(null, in, Boolean.TRUE);
             ParameterBlock pb = new ParameterBlock();
             pb.add(com_sun_media_jai_codec_SeekableStream_s);
-            Object javax_media_jai_RenderedOp_op = jaiCreate.invoke(null, new Object[]{"tiff", pb});
+            Object javax_media_jai_RenderedOp_op = jaiCreate.invoke(null, "tiff", pb);
 
             /*
              * This was another approach:
@@ -821,17 +832,14 @@ public class CCITTFax {
                     img = new BufferedImage(cm, (WritableRaster) r, false, null);
                 } else {
                     /* img = op.getAsBufferedImage(); */
-                    img = (BufferedImage) roGetAsBufferedImage.invoke(javax_media_jai_RenderedOp_op, new Object[]{});
+                    img = (BufferedImage) roGetAsBufferedImage.invoke(javax_media_jai_RenderedOp_op);
                 }
             }
-        } catch (Throwable e) {
-            img = null;
-            logger.log(Level.FINE,
-                    "Could not derive image from data bytes via JAI.");
         } finally {
             try {
                 in.close();
             } catch (IOException e) {
+                // keep quiet
             }
         }
         return img;
@@ -842,8 +850,6 @@ public class CCITTFax {
         // If the image we actually have is monochrome, and so is useful as an image mask
         ColorModel cm = img.getColorModel();
         if (cm instanceof IndexColorModel && cm.getPixelSize() == 1) {
-            if (Tagger.tagging)
-                Tagger.tagImage("CCITTFaxDecode_ImageMaskDecode=JAI_MANUAL");
             // From PDF 1.6 spec, concerning ImageMask and Decode array:
             // [0 1] (the default for an image mask), a sample value of 0 marks
             //       the page with the current color, and a 1 leaves the previous
@@ -860,8 +866,8 @@ public class CCITTFax {
             //    BlackIs1=false, Decode=[0 1] 
             //    BlackIs1=false, Decode=[1 0] 
             //    BlackIs1=true,  Decode=[0 1] 
-            boolean flag = ((blackIs1 == null) && (defaultDecode == false)) ||
-                    ((blackIs1 != null) && blackIs1.booleanValue() && (decode == null));
+            boolean flag = ((blackIs1 == null) && (!defaultDecode)) ||
+                    ((blackIs1 != null) && blackIs1 && (decode == null));
             if (imageMask) {
                 int a = 0x00FFFFFF; // Clear if alpha supported, else white
                 int[] cmap = new int[]{

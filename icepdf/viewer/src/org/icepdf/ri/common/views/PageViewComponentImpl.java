@@ -28,6 +28,8 @@ import org.icepdf.ri.common.tools.TextSelectionPageHandler;
 import org.icepdf.ri.common.views.annotations.AbstractAnnotationComponent;
 import org.icepdf.ri.common.views.annotations.FreeTextAnnotationComponent;
 import org.icepdf.ri.common.views.annotations.PopupAnnotationComponent;
+import org.icepdf.ri.common.views.listeners.DefaultPageViewLoadingListener;
+import org.icepdf.ri.common.views.listeners.PageViewLoadingListener;
 
 import javax.swing.*;
 import java.awt.*;
@@ -71,6 +73,7 @@ import java.util.logging.Logger;
  * viewport will be extended to define the buffer size.</p>
  * @since 2.5
  */
+@SuppressWarnings("serial")
 public class PageViewComponentImpl extends
         AbstractPageViewComponent
         implements PaintPageListener,
@@ -127,6 +130,9 @@ public class PageViewComponentImpl extends
     private final Object paintCopyAreaLock = new Object();
     //    private final Object isDirtyLock = new Object();
     private boolean disposing = false;
+
+    // track loading events for wait icon
+    private PageViewLoadingListener pageLoadingListener;
 
     // current clip
     private Rectangle clipBounds;
@@ -195,6 +201,9 @@ public class PageViewComponentImpl extends
         addFocusListener(this);
 
         addComponentListener(this);
+
+        // page loading progress
+        pageLoadingListener = new DefaultPageViewLoadingListener(this, documentViewController);
 
         // needed to propagate mouse events.
         this.documentViewModel = documentViewModel;
@@ -336,6 +345,7 @@ public class PageViewComponentImpl extends
         Page page = pageTree.getPage(pageIndex);
         if (page != null) {
             page.addPaintPageListener(this);
+            page.addPageProcessingListener(pageLoadingListener);
         }
         return page;
     }
@@ -343,6 +353,7 @@ public class PageViewComponentImpl extends
     public void setDocumentViewCallback(DocumentView parentDocumentView) {
         this.parentDocumentView = parentDocumentView;
         documentViewController = this.parentDocumentView.getParentViewController();
+        pageLoadingListener.setDocumentViewController(documentViewController);
     }
 
     public int getPageIndex() {
@@ -414,10 +425,10 @@ public class PageViewComponentImpl extends
             // draw the clean buffer
             if (pageBufferImage != null && !isPageStateDirty()) {
                 // block, if copy area is being done in painter thread
-                synchronized (paintCopyAreaLock) {
-                    g.drawImage(pageBufferImage, bufferedPageImageBounds.x,
-                            bufferedPageImageBounds.y, this);
-                }
+//                synchronized (paintCopyAreaLock) {
+                g.drawImage(pageBufferImage, bufferedPageImageBounds.x,
+                        bufferedPageImageBounds.y, this);
+//                }
             }
             // experiment with a scaled buffer before repaint.
 //            else if (pageBufferImage != null && isPageStateDirty()) {
@@ -459,13 +470,20 @@ public class PageViewComponentImpl extends
 
             // Lazy paint of highlight and select all text states.
             Page currentPage = getPage();
-            if (currentPage != null && currentPage.isInitiated()) {
+            // paint any highlighted words
+            DocumentSearchController searchController =
+                    documentViewController.getParentController()
+                            .getDocumentSearchController();
+            if (currentPage != null && currentPage.isInitiated() &&
+                    // make sure we don't accidently block the awt ui thread, but we still
+                    // want to paint search text and text selection if text selection tool is selected.
+                    (searchController.isSearchHighlightRefreshNeeded(pageIndex, null) ||
+                            documentViewModel.isViewToolModeSelected(DocumentViewModel.DISPLAY_TOOL_TEXT_SELECTION) ||
+                            documentViewModel.isViewToolModeSelected(DocumentViewModel.DISPLAY_TOOL_HIGHLIGHT_ANNOTATION))
+                    ) {
                 PageText pageText = currentPage.getViewText();
                 if (pageText != null) {
                     // paint any highlighted words
-                    DocumentSearchController searchController =
-                            documentViewController.getParentController()
-                                    .getDocumentSearchController();
                     if (searchController.isSearchHighlightRefreshNeeded(pageIndex, pageText)) {
                         searchController.searchHighlightPage(pageIndex);
                     }
@@ -954,6 +972,7 @@ public class PageViewComponentImpl extends
             Page currentPage = getPage();
             if (currentPage != null) {
                 currentPage.removePaintPageListener(this);
+                currentPage.removePageProcessingListener(pageLoadingListener);
             }
         }
 

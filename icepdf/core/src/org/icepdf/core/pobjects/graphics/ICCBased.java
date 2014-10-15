@@ -24,6 +24,7 @@ import java.awt.*;
 import java.awt.color.ColorSpace;
 import java.awt.color.ICC_ColorSpace;
 import java.awt.color.ICC_Profile;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -43,8 +44,10 @@ public class ICCBased extends PColorSpace {
     Stream stream;
     ColorSpace colorSpace;
 
-    private float[] lastInput;
-    private Color lastOutput;
+    // basic cache to speed up the lookup, can't be static as we handle
+    // 3 and 4 band colours.
+    private static ConcurrentHashMap<Integer, Color> iccColorCache3B;
+    private static ConcurrentHashMap<Integer, Color> iccColorCache4B;
 
     // setting up an ICC colour look up is expensive, so if we get a failure
     // we just fallback to the alternative space to safe cpu time.
@@ -52,6 +55,8 @@ public class ICCBased extends PColorSpace {
 
     public ICCBased(Library l, Stream h) {
         super(l, h.getEntries());
+        iccColorCache3B = new ConcurrentHashMap<Integer, Color>();
+        iccColorCache4B = new ConcurrentHashMap<Integer, Color>();
         numcomp = h.getInt(N_KEY);
         switch (numcomp) {
             case 1:
@@ -74,7 +79,7 @@ public class ICCBased extends PColorSpace {
         if (inited) {
             return;
         }
-        inited = true;
+
         byte[] in;
         try {
             stream.init();
@@ -90,6 +95,7 @@ public class ICCBased extends PColorSpace {
         } catch (Exception e) {
             logger.log(Level.FINE, "Error Processing ICCBased Colour Profile", e);
         }
+        inited = true;
     }
 
     /**
@@ -103,73 +109,70 @@ public class ICCBased extends PColorSpace {
         return alternate;
     }
 
+    private static int generateKey(float[] f) {
+        int key = (((int) (f[0] * 255) & 0xff) << 16) |
+                (((int) (f[1] * 255) & 0xff) << 8) |
+                (((int) (f[2] * 255) & 0xff) & 0xff);
+        if (f.length == 4) key |= (((int) (f[3] * 255) & 0xff) << 24);
+        return key;
+    }
+
+    private static Color addColorToCache(
+            ConcurrentHashMap<Integer, Color> iccColorCache, int key,
+            ColorSpace colorSpace, float[] f) {
+        Color color = iccColorCache.get(key);
+        if (color != null) {
+            return color;
+        } else {
+            color = new Color(calculateColor(f, colorSpace));
+            iccColorCache.put(key, color);
+            return color;
+        }
+    }
+
     public Color getColor(float[] f, boolean fillAndStroke) {
         init();
         if (colorSpace != null && !failed) {
             try {
-                synchronized (this) {
-                    // We cache the previous inputs and output, since images
-                    //   tend to have long runs of the same color
-                    if (lastOutput != null && lastInput != null &&
-                            f != null && lastInput.length == f.length) {
-                        boolean matches = true;
-                        int num = lastInput.length;
-                        for (int i = num - 1; i >= 0; i--) {
-                            if (f[i] != lastInput[i]) {
-                                matches = false;
-                                break;
-                            }
-                        }
-                        if (matches)
-                            return lastOutput;
-                    }
-
-                    int n = colorSpace.getNumComponents();
-                    // Get the reverse of f, and only take n values
-                    // Might as well limit the bounds while we're at it
-                    float[] fvalue = new float[n];
-                    int toCopy = n;
-                    int fLength = f.length;
-                    if (fLength < toCopy) {
-                        toCopy = fLength;
-                    }
-                    for (int i = 0; i < toCopy; i++) {
-                        float curr = f[fLength - 1 - i];
-                        if (curr < 0.0f)
-                            curr = 0.0f;
-                        else if (curr > 1.0f)
-                            curr = 1.0f;
-                        fvalue[i] = curr;
-                    }
-                    float[] frgbvalue = colorSpace.toRGB(fvalue);
-                    int value = (0xFF000000) |
-                            ((((int) (frgbvalue[0] * 255)) & 0xFF) << 16) |
-                            ((((int) (frgbvalue[1] * 255)) & 0xFF) << 8) |
-                            ((((int) (frgbvalue[2] * 255)) & 0xFF));
-                    Color c = new Color(value);
-
-                    // Update the cache
-                    if (lastInput == null || lastInput.length != fLength) {
-                        lastInput = new float[fLength];
-                    }
-                    System.arraycopy(f, 0, lastInput, 0, fLength - 1 + 1);
-                    lastOutput = c;
-
-                    return c;
+                // generate a key for the colour
+                int key = generateKey(f);
+                if (f.length <= 3) {
+                    return addColorToCache(iccColorCache3B, key, colorSpace, f);
+                } else {
+                    return addColorToCache(iccColorCache4B, key, colorSpace, f);
                 }
-                /*
-                Color c = new Color( colorSpace,reverse(f), 1 );
-                return new Color(
-                    ColorSpace_CS_sRGB,
-                    c.getRGBComponents(null),
-                    1);
-                */
             } catch (Exception e) {
                 logger.log(Level.FINE, "Error getting ICCBased colour", e);
                 failed = true;
             }
         }
         return alternate.getColor(f);
+    }
+
+    private static int calculateColor(float[] f, ColorSpace colorSpace) {
+        int n = colorSpace.getNumComponents();
+        // Get the reverse of f, and only take n values
+        // Might as well limit the bounds while we're at it
+        float[] fvalue = new float[n];
+        int toCopy = n;
+        int fLength = f.length;
+        if (fLength < toCopy) {
+            toCopy = fLength;
+        }
+        for (int i = 0; i < toCopy; i++) {
+            float curr = f[fLength - 1 - i];
+            if (curr < 0.0f) {
+                curr = 0.0f;
+            } else if (curr > 1.0f) {
+                curr = 1.0f;
+            }
+            fvalue[i] = curr;
+        }
+        float[] frgbvalue = colorSpace.toRGB(fvalue);
+        return (0xFF000000) |
+                ((((int) (frgbvalue[0] * 255)) & 0xFF) << 16) |
+                ((((int) (frgbvalue[1] * 255)) & 0xFF) << 8) |
+                ((((int) (frgbvalue[2] * 255)) & 0xFF));
     }
 
     public ColorSpace getColorSpace() {

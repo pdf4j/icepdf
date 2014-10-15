@@ -54,10 +54,11 @@ public class Catalog extends Dictionary {
     public static final Name PAGES_KEY = new Name("Pages");
     public static final Name PAGELAYOUT_KEY = new Name("PageLayout");
     public static final Name PAGEMODE_KEY = new Name("PageMode");
+    public static final Name COLLECTION_KEY = new Name("Collection");
 
     private PageTree pageTree;
     private Outlines outlines;
-    private NameTree nameTree;
+    private Names names;
     private OptionalContent optionalContent;
     private Dictionary dests;
     private ViewerPreferences viewerPref;
@@ -102,8 +103,8 @@ public class Catalog extends Dictionary {
         // malformed cornercase, just have a page object, instead of tree.
         else if (tmp instanceof Page) {
             Page tmpPage = (Page) tmp;
-            HashMap tmpPages = new HashMap();
-            List kids = new ArrayList();
+            HashMap<String, Object> tmpPages = new HashMap<String, Object>();
+            List<Reference> kids = new ArrayList<Reference>();
             kids.add(tmpPage.getPObjectReference());
             tmpPages.put("Kids", kids);
             tmpPages.put("Count", 1);
@@ -111,8 +112,16 @@ public class Catalog extends Dictionary {
         }
 
         // let any exception bubble up.
-        pageTree.init();
+        if (pageTree != null) {
+            pageTree.init();
+        }
 
+        // check for the collections dictionary for the presence of a portable collection
+        tmp = library.getObject(entries, NAMES_KEY);
+        if (tmp != null) {
+            names = new Names(library, (HashMap) tmp);
+            names.init();
+        }
     }
 
     /**
@@ -148,23 +157,11 @@ public class Catalog extends Dictionary {
      * a category of objects in a PDF file which can be referred to by name
      * rather than by object reference.
      *
-     * @return name dictionary for document.  If no name dictionary exists null
-     *         is returned.
+     * @return names object entry.  If no names entries exists null
+     * is returned.
      */
-    public NameTree getNameTree() {
-        if (!namesTreeInited) {
-            namesTreeInited = true;
-            Object o = library.getObject(entries, NAMES_KEY);
-            if (o != null && o instanceof HashMap) {
-                HashMap dest = (HashMap) o;
-                Object names = library.getObject(dest, DESTS_KEY);
-                if (names != null && names instanceof HashMap) {
-                    nameTree = new NameTree(library, (HashMap) names);
-                    nameTree.init();
-                }
-            }
-        }
-        return nameTree;
+    public Names getNames() {
+        return names;
     }
 
     /**
@@ -172,6 +169,7 @@ public class Catalog extends Dictionary {
      *
      * @return A Dictionary of Destinations; if none, null is returned.
      */
+    @SuppressWarnings("unchecked")
     public Dictionary getDestinations() {
         if (!destsInited) {
             destsInited = true;

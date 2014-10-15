@@ -15,33 +15,28 @@
  */
 package org.icepdf.core.pobjects;
 
-import com.sun.image.codec.jpeg.JPEGCodec;
-import com.sun.image.codec.jpeg.JPEGImageDecoder;
+
 import org.icepdf.core.io.BitStream;
 import org.icepdf.core.io.SeekableInputConstrainedWrapper;
 import org.icepdf.core.pobjects.filters.CCITTFax;
 import org.icepdf.core.pobjects.filters.CCITTFaxDecoder;
 import org.icepdf.core.pobjects.graphics.*;
-import org.icepdf.core.tag.Tagger;
 import org.icepdf.core.util.Defs;
 import org.icepdf.core.util.Library;
 
 import javax.imageio.ImageIO;
+import javax.imageio.ImageReadParam;
 import javax.imageio.ImageReader;
 import javax.imageio.stream.ImageInputStream;
 import java.awt.*;
 import java.awt.color.ColorSpace;
 import java.awt.image.BufferedImage;
 import java.awt.image.ColorConvertOp;
-import java.awt.image.Raster;
 import java.awt.image.WritableRaster;
-import java.awt.image.renderable.ParameterBlock;
 import java.io.BufferedInputStream;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.lang.reflect.Method;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -164,9 +159,13 @@ public class ImageStream extends Stream {
      * @return new image object
      */
     // was synchronized, not think it is needed?
+    @SuppressWarnings("unchecked")
     public synchronized BufferedImage getImage(Color fill, Resources resources) {
-        if (Tagger.tagging)
-            Tagger.tagImage("Filter=" + getNormalisedFilterNames());
+        // check the pool encase we already parse this image.
+        if (pObjectReference != null &&
+                library.getImagePool().containsKey(pObjectReference)) {
+            return library.getImagePool().get(pObjectReference);
+        }
 
         // parse colour space, lock is to insure that getColorSpace()
         // will return only after colourSpace has been set.
@@ -178,26 +177,18 @@ public class ImageStream extends Stream {
             // assume b&w image is no colour space
             if (colourSpace == null) {
                 colourSpace = new DeviceGray(library, null);
-                if (Tagger.tagging)
-                    Tagger.tagImage("ColorSpace_Implicit_DeviceGray");
             }
         }
-        if (Tagger.tagging)
-            Tagger.tagImage("ColorSpace=" + colourSpace.getDescription());
+        // A flag indicating whether the image shall be treated as an image mask
+        boolean isImageMask = isImageMask();
 
-        boolean imageMask = isImageMask();
-        if (Tagger.tagging)
-            Tagger.tagImage("ImageMask=" + imageMask);
-
-        // find out the number of bits in the image
+        // If this flag is true, the value of BitsPerComponent shall be 1 and
+        // Mask and ColorSpace shall not be specified; unmasked areas shall be
+        // painted using the current nonstroking colour
         int bitsPerComponent = library.getInt(entries, BITSPERCOMPONENT_KEY);
-        if (imageMask && bitsPerComponent == 0) {
+        if (isImageMask && bitsPerComponent == 0) {
             bitsPerComponent = 1;
-            if (Tagger.tagging)
-                Tagger.tagImage("BitsPerComponent_Implicit_1");
         }
-        if (Tagger.tagging)
-            Tagger.tagImage("BitsPerComponent=" + bitsPerComponent);
 
         // check for available memory, get colour space and bit count
         // to better estimate size of image in memory
@@ -213,8 +204,6 @@ public class ImageStream extends Stream {
                 decode[j++] = 0.0f;
                 decode[j++] = 1.0f / maxValue;
             }
-            if (Tagger.tagging)
-                Tagger.tagImage("Decode_Implicit_01");
         } else {
             for (int i = 0, j = 0; i < colorSpaceCompCount; i++) {
                 float Dmin = decodeVec.get(j).floatValue();
@@ -223,10 +212,6 @@ public class ImageStream extends Stream {
                 decode[j++] = (Dmax - Dmin) / maxValue;
             }
         }
-
-        if (Tagger.tagging)
-            Tagger.tagImage("Decode=" + Arrays.toString(decode));
-
         BufferedImage smaskImage = null;
         BufferedImage maskImage = null;
         int[] maskMinRGB = null;
@@ -235,33 +220,28 @@ public class ImageStream extends Stream {
         int maskMaxIndex = -1;
         Object smaskObj = library.getObject(entries, SMASK_KEY);
         Object maskObj = library.getObject(entries, MASK_KEY);
+
+        // If present, this entry shall override the current soft mask in the
+        // graphics state, as well as the image’s Mask entry, if any. However,
+        // the other transparency-related graphics state parameters—blend mode
+        // and alpha constant—shall remain in effect.
         if (smaskObj instanceof Stream) {
-            if (Tagger.tagging)
-                Tagger.tagImage("SMaskStream");
             ImageStream smaskStream = (ImageStream) smaskObj;
             if (smaskStream.isImageSubtype()) {
                 smaskImage = smaskStream.getImage(fill, resources);
             }
         }
-        if (smaskImage != null) {
-            if (Tagger.tagging)
-                Tagger.tagImage("SMaskImage");
-        }
+
+        // An image XObject defining an image mask to be applied to this image
+        // ("Explicit Masking"), or an array specifying a range of colours to be
+        // applied to it as a colour key mask ("Colour Key Masking").
         if (maskObj != null && smaskImage == null) {
             if (maskObj instanceof Stream) {
-                if (Tagger.tagging)
-                    Tagger.tagImage("MaskStream");
                 ImageStream maskStream = (ImageStream) maskObj;
                 if (maskStream.isImageSubtype()) {
                     maskImage = maskStream.getImage(fill, resources);
-                    if (maskImage != null) {
-                        if (Tagger.tagging)
-                            Tagger.tagImage("MaskImage");
-                    }
                 }
             } else if (maskObj instanceof List) {
-                if (Tagger.tagging)
-                    Tagger.tagImage("MaskVector");
                 List maskVector = (List) maskObj;
                 int[] maskMinOrigCompsInt = new int[colorSpaceCompCount];
                 int[] maskMaxOrigCompsInt = new int[colorSpaceCompCount];
@@ -305,22 +285,18 @@ public class ImageStream extends Stream {
             }
         }
 
-        BufferedImage img = getImage(
-                colourSpace, fill,
-                width, height,
-                colorSpaceCompCount,
-                bitsPerComponent,
-                imageMask,
+        BufferedImage image = getImage(
+                colourSpace, fill, width, height,
+                colorSpaceCompCount, bitsPerComponent,
+                isImageMask,
                 decode,
-                smaskImage,
-                maskImage,
-                maskMinRGB,
-                maskMaxRGB,
-                maskMinIndex, maskMaxIndex);
-
-        if (Tagger.tagging)
-            Tagger.endImage(pObjectReference);
-        return img;
+                smaskImage, maskImage,
+                maskMinRGB, maskMaxRGB, maskMinIndex, maskMaxIndex);
+        // add the image to the pool, just encase it get painted again.
+        if (pObjectReference != null) {
+            library.getImagePool().put(pObjectReference, image);
+        }
+        return image;
     }
 
     /**
@@ -334,7 +310,7 @@ public class ImageStream extends Stream {
      * @param height              heigth of image
      * @param colorSpaceCompCount colour space component count, 1, 3, 4 etc.
      * @param bitsPerComponent    number of bits that represent one component.
-     * @param imageMask           boolean flag to use image mask or not.
+     * @param isImageMask         boolean flag to use image mask or not.
      * @param decode              decode array, 1,0 or 0,1 can effect colour interpretation.
      * @param sMaskImage          smaask image value, optional.
      * @param maskImage           buffered image image mask to apply to decoded image, optional.
@@ -349,7 +325,7 @@ public class ImageStream extends Stream {
             int width, int height,
             int colorSpaceCompCount,
             int bitsPerComponent,
-            boolean imageMask,
+            boolean isImageMask,
             float[] decode,
             BufferedImage sMaskImage,
             BufferedImage maskImage,
@@ -358,28 +334,22 @@ public class ImageStream extends Stream {
 
         // check to see if we need to create an imge with alpha, a mask
         // will have imageMask=true and in this case we don't need alpha
-//        boolean alphaImage = !imageMask && (sMaskImage != null || maskImage != null);
-
         BufferedImage decodedImage = null;
 
         // JPEG writes out image if successful
         if (shouldUseDCTDecode()) {
-            if (Tagger.tagging)
-                Tagger.tagImage("DCTDecode");
             decodedImage = dctDecode(width, height, colourSpace, bitsPerComponent, decode);
         }
         // JBIG2 writes out image if successful
         else if (shouldUseJBIG2Decode()) {
-            if (Tagger.tagging)
-                Tagger.tagImage("JBIG2Decode");
             decodedImage = jbig2Decode(width, height, colourSpace, bitsPerComponent);
         }
         // JPEG2000 writes out image if successful
         else if (shouldUseJPXDecode()) {
-            if (Tagger.tagging)
-                Tagger.tagImage("JPXDecode");
             decodedImage = jpxDecode(width, height, colourSpace, bitsPerComponent, decode);
-        } else {
+        }
+        // we have some raw data so, CCITTfax or some other image primitive.
+        else {
             byte[] data = getDecodedStreamBytes(
                     width * height
                             * colourSpace.getNumComponents()
@@ -388,8 +358,6 @@ public class ImageStream extends Stream {
             // CCITTfax data is raw byte decode.
             if (shouldUseCCITTFaxDecode()) {
                 // try default ccittfax decode.
-                if (Tagger.tagging)
-                    Tagger.tagImage("CCITTFaxDecode");
                 try {
                     // corner case where a user may want to use JAI because of
                     // speed or compatibility requirements.
@@ -401,15 +369,17 @@ public class ImageStream extends Stream {
                 } catch (Throwable e) {
                     // on a failure then fall back to JAI for a try. likely
                     // will not happen.
-                    if (Tagger.tagging) {
-                        Tagger.tagImage("CCITTFaxDecode JAI");
+                    try {
+                        decodedImage = CCITTFax.attemptDeriveBufferedImageFromBytes(
+                                this, library, entries, fill);
+                    } catch (Throwable e1) {
+                        // fall back on ccittfax code.
+                        data = ccittFaxDecode(data, width, height);
+                        dataLength = data.length;
                     }
-                    decodedImage = CCITTFax.attemptDeriveBufferedImageFromBytes(
-                            this, library, entries, fill);
                     return decodedImage;
                 }
             }
-
             // finally push the bytes though the common image processor to try
             // and build a a Buffered image.
             try {
@@ -418,7 +388,7 @@ public class ImageStream extends Stream {
                         width, height,
                         colorSpaceCompCount,
                         bitsPerComponent,
-                        imageMask,
+                        isImageMask,
                         decode,
                         sMaskImage,
                         maskImage,
@@ -426,9 +396,6 @@ public class ImageStream extends Stream {
                         maskMinIndex, maskMaxIndex,
                         data, dataLength);
 //                ImageUtility.displayImage(decodedImage, pObjectReference.toString());
-                if (decodedImage != null) {
-                    return decodedImage;
-                }
             } catch (Exception e) {
                 logger.log(Level.FINE, "Error building image raster.", e);
             }
@@ -446,29 +413,31 @@ public class ImageStream extends Stream {
                     width,
                     height,
                     colourSpace,
-                    imageMask,
+                    isImageMask,
                     fill,
                     bitsPerComponent,
                     decode,
                     data);
         }
+        if (decodedImage != null) {
+            //        ImageUtility.displayImage(decodedImage, pObjectReference.toString());
+            if (isImageMask) {
+                decodedImage = ImageUtility.applyExplicitMask(decodedImage, fill);
+            }
 
-//        ImageUtility.displayImage(decodedImage, pObjectReference.toString());
-        if (imageMask) {
-            decodedImage = ImageUtility.applyExplicitMask(decodedImage, fill);
-        }
+            // apply common mask and sMask processing
+            if (sMaskImage != null) {
+                decodedImage = ImageUtility.applyExplicitSMask(decodedImage, sMaskImage);
+            }
+            if (maskImage != null) {
+                decodedImage = ImageUtility.applyExplicitMask(decodedImage, maskImage);
+            }
+            //        ImageUtility.displayImage(decodedImage, pObjectReference.toString());
 
-        // apply common mask and sMask processing
-        if (sMaskImage != null) {
-            decodedImage = ImageUtility.applyExplicitSMask(decodedImage, sMaskImage);
+            // with  little luck the image is ready for viewing.
+            return decodedImage;
         }
-        if (maskImage != null) {
-            decodedImage = ImageUtility.applyExplicitMask(decodedImage, maskImage);
-        }
-//        ImageUtility.displayImage(decodedImage, pObjectReference.toString());
-
-        // with  little luck the image is ready for viewing.
-        return decodedImage;
+        return null;
     }
 
 
@@ -479,7 +448,7 @@ public class ImageStream extends Stream {
      * stream.
      *
      * @return buffered images representation of the decoded JPEG data.  Null
-     *         if the image could not be properly decoded.
+     * if the image could not be properly decoded.
      */
     private BufferedImage dctDecode(
             int width, int height, PColorSpace colourSpace, int bitspercomponent,
@@ -497,191 +466,118 @@ public class ImageStream extends Stream {
         // Some files say DeviceCMYK, or ICCBased, when neither would work, because it's really YCbCrA
         // What does work though, is to look into the JPEG headers themself, via getJPEGEncoding()
 
-        int jpegEncoding = ImageUtility.JPEG_ENC_UNKNOWN_PROBABLY_YCbCr;
-        try {
-            byte[] data = new byte[MAX_BYTES_TO_READ_FOR_ENCODING];
-            int dataRead = bufferedInput.read(data);
-            bufferedInput.reset();
-            if (dataRead > 0)
-                jpegEncoding = ImageUtility.getJPEGEncoding(data, dataRead);
-        } catch (IOException ioe) {
-            logger.log(Level.FINE, "Problem determining JPEG type: ", ioe);
-        }
-        if (Tagger.tagging)
-            Tagger.tagImage("DCTDecode_JpegEncoding=" + ImageUtility.JPEG_ENC_NAMES[jpegEncoding]);
-
+        int jpegEncoding;
         BufferedImage tmpImage = null;
+        ImageReader reader = null;
+        ImageInputStream imageInputStream = null;
+        try {
+            // get the full image data.
+            byte[] data = getDecodedStreamBytes(
+                    width * height
+                            * colourSpace.getNumComponents()
+                            * bitspercomponent / 8);
 
-        if (tmpImage == null) {
-            try {
-                JPEGImageDecoder imageDecoder = JPEGCodec.createJPEGDecoder(bufferedInput);
-                //System.out.println("Stream.dctDecode() EncodedColorID: " + imageDecoder.getJPEGDecodeParam().getEncodedColorID());
-                Raster r = imageDecoder.decodeAsRaster();
-                WritableRaster wr = (r instanceof WritableRaster)
-                        ? (WritableRaster) r : r.createCompatibleWritableRaster();
-                if (jpegEncoding == ImageUtility.JPEG_ENC_RGB && bitspercomponent == 8) {
-                    ImageUtility.alterRasterRGB2PColorSpace(wr, colourSpace);
-                    tmpImage = ImageUtility.makeRGBtoRGBABuffer(wr, width, height);
-                } else if (jpegEncoding == ImageUtility.JPEG_ENC_CMYK && bitspercomponent == 8) {
-                    tmpImage = ImageUtility.alterRasterCMYK2BGRA(wr, decode);
-                } else if (jpegEncoding == ImageUtility.JPEG_ENC_YCbCr && bitspercomponent == 8) {
-                    tmpImage = ImageUtility.alterRasterYCbCr2RGBA(wr, decode);
-                } else if (jpegEncoding == ImageUtility.JPEG_ENC_YCCK && bitspercomponent == 8) {
-                    // YCCK to RGB works better if an CMYK intermediate is used, but slower.
-                    ImageUtility.alterRasterYCCK2CMYK(wr, decode);
-                    tmpImage = ImageUtility.alterRasterCMYK2BGRA(wr);
-                } else if (jpegEncoding == ImageUtility.JPEG_ENC_GRAY && bitspercomponent == 8) {
-                    // In DCTDecode with ColorSpace=DeviceGray, the samples are gray values (2000_SID_Service_Info.core)
-                    // In DCTDecode with ColorSpace=Separation, the samples are Y values (45-14550BGermanForWeb.core AKA 4570.core)
-                    // Avoid converting images that are already likely gray.
-                    if (colourSpace != null &&
-                            !(colourSpace instanceof DeviceGray) &&
-                            !(colourSpace instanceof ICCBased) &&
-                            !(colourSpace instanceof Indexed)) {
-                        if (colourSpace instanceof Separation &&
-                                ((Separation) colourSpace).isNamedColor()) {
-                            ImageUtility.alterRasterY2Gray(wr, decode);
-                            tmpImage = ImageUtility.makeGrayBufferedImage(wr);
-                        } else {
-                            tmpImage = ImageUtility.makeRGBBufferedImage(wr, decode, colourSpace);
-                        }
+            int dataRead = data.length;
+            if (dataRead > MAX_BYTES_TO_READ_FOR_ENCODING) {
+                dataRead = MAX_BYTES_TO_READ_FOR_ENCODING;
+            }
+            // check the encoding type for colour conversion.
+            jpegEncoding = ImageUtility.getJPEGEncoding(data, dataRead);
+
+            imageInputStream = ImageIO.createImageInputStream(
+                    new ByteArrayInputStream(data));
+
+            // get a reader that supports getting the raster.
+            Iterator<ImageReader> iter = ImageIO.getImageReaders(imageInputStream);
+            while (iter.hasNext()) {
+                reader = iter.next();
+                if (reader.canReadRaster()) {
+                    if (logger.isLoggable(Level.FINER)) {
+                        logger.finer("DCTDecode Image reader: " + reader);
+                    }
+                    break;
+                }
+            }
+            // should never happen but bail on an empty reader.
+            if (reader == null) {
+                imageInputStream.close();
+                return null;
+            }
+            reader.setInput(imageInputStream, true, true);
+            // read the raster data only, as we have our own logic to covert
+            // the raster data to RGB colours.
+            ImageReadParam param = reader.getDefaultReadParam();
+            WritableRaster wr = (WritableRaster) reader.readRaster(0, param);
+
+            if (jpegEncoding == ImageUtility.JPEG_ENC_RGB && bitspercomponent == 8) {
+                tmpImage = ImageUtility.convertSpaceToRgb(wr, colourSpace, decode);
+            } else if (jpegEncoding == ImageUtility.JPEG_ENC_CMYK && bitspercomponent == 8) {
+                tmpImage = ImageUtility.convertCmykToRgb(wr, decode);
+            } else if (jpegEncoding == ImageUtility.JPEG_ENC_YCbCr && bitspercomponent == 8) {
+                tmpImage = ImageUtility.convertYCbCrToRGB(wr, decode);
+            } else if (jpegEncoding == ImageUtility.JPEG_ENC_YCCK && bitspercomponent == 8) {
+                // YCCK to RGB works better if an CMYK intermediate is used, but slower.
+                tmpImage = ImageUtility.convertYCCKToRgb(wr, decode);
+            } else if (jpegEncoding == ImageUtility.JPEG_ENC_GRAY && bitspercomponent == 8) {
+                // In DCTDecode with ColorSpace=DeviceGray, the samples are gray values (2000_SID_Service_Info.core)
+                // In DCTDecode with ColorSpace=Separation, the samples are Y values (45-14550BGermanForWeb.core AKA 4570.core)
+                // Avoid converting images that are already likely gray.
+                if (!(colourSpace instanceof DeviceGray) &&
+                        !(colourSpace instanceof ICCBased) &&
+                        !(colourSpace instanceof Indexed)) {
+                    if (colourSpace instanceof Separation &&
+                            ((Separation) colourSpace).isNamedColor()) {
+                        tmpImage = ImageUtility.convertGrayToRgb(wr, decode);
                     } else {
-                        tmpImage = ImageUtility.makeGrayBufferedImage(wr);
+                        tmpImage = ImageUtility.convertSpaceToRgb(wr, colourSpace, decode);
                     }
                 } else {
-                    //System.out.println("Stream.dctDecode()      EncodedColorID: " + imageDecoder.getJPEGDecodeParam().getEncodedColorID());
-                    if (imageDecoder.getJPEGDecodeParam().getEncodedColorID() ==
-                            com.sun.image.codec.jpeg.JPEGDecodeParam.COLOR_ID_YCbCrA) {
-                        if (Tagger.tagging)
-                            Tagger.tagImage("DCTDecode_JpegSubEncoding=YCbCrA");
-                        // YCbCrA, which is slightly different than YCCK
-                        ImageUtility.alterRasterYCbCrA2RGBA(wr);
-                        tmpImage = ImageUtility.makeRGBABufferedImage(wr);
-                    } else {
-                        if (Tagger.tagging)
-                            Tagger.tagImage("DCTDecode_JpegSubEncoding=YCbCr");
-                        ImageUtility.alterRasterYCbCr2RGBA(wr, decode);
-                        tmpImage = ImageUtility.makeRGBBufferedImage(wr);
-                    }
+                    tmpImage = ImageUtility.makeGrayBufferedImage(wr);
                 }
-            } catch (Exception e) {
-                logger.log(Level.FINE, "Problem loading JPEG image via JPEGImageDecoder: ", e);
+            } else {
+                // assume gray based jpeg.
+                if (wr.getNumBands() == 1) {
+                    tmpImage = ImageUtility.convertSpaceToRgb(wr, colourSpace, decode);
+                }
+                // otherwise assume YCbCr bands = 3.
+                else {
+                    tmpImage = ImageUtility.convertYCbCrToRGB(wr, decode);
+                }
             }
-            if (tmpImage != null) {
-                if (Tagger.tagging)
-                    Tagger.tagImage("HandledBy=DCTDecode_SunJPEGImageDecoder");
-            }
-        }
 
-        try {
-            bufferedInput.close();
         } catch (IOException e) {
-            logger.log(Level.FINE, "Error closing image stream.", e);
-        }
-
-        if (tmpImage == null) {
-            try {
-                //System.out.println("Stream.dctDecode()  JAI");
-                Object javax_media_jai_RenderedOp_op = null;
-                try {
-                    // Have to reget the data
-                    input = getDecodedByteArrayInputStream();
-
-                    /*
-                    com.sun.media.jai.codec.SeekableStream s = com.sun.media.jai.codec.SeekableStream.wrapInputStream( new ByteArrayInputStream(data), true );
-                    ParameterBlock pb = new ParameterBlock();
-                    pb.add( s );
-                    javax.media.jai.RenderedOp op = javax.media.jai.JAI.create( "jpeg", pb );
-                    */
-                    Class ssClass = Class.forName("com.sun.media.jai.codec.SeekableStream");
-                    Method ssWrapInputStream = ssClass.getMethod("wrapInputStream", InputStream.class, Boolean.TYPE);
-                    Object com_sun_media_jai_codec_SeekableStream_s =
-                            ssWrapInputStream.invoke(null, input, Boolean.TRUE);
-                    ParameterBlock pb = new ParameterBlock();
-                    pb.add(com_sun_media_jai_codec_SeekableStream_s);
-                    Class jaiClass = Class.forName("javax.media.jai.JAI");
-                    Method jaiCreate = jaiClass.getMethod("create", String.class, ParameterBlock.class);
-                    javax_media_jai_RenderedOp_op = jaiCreate.invoke(null, "jpeg", pb);
-                } catch (Exception e) {
-                    logger.warning("Could not load JAI");
-                }
-
-                if (javax_media_jai_RenderedOp_op != null) {
-                    if (jpegEncoding == ImageUtility.JPEG_ENC_CMYK && bitspercomponent == 8) {
-                        /*
-                         * With or without alterRasterCMYK2BGRA(), give blank image
-                        Raster r = op.copyData();
-                        WritableRaster wr = (r instanceof WritableRaster)
-                                ? (WritableRaster) r : r.createCompatibleWritableRaster();
-                        alterRasterCMYK2BGRA( wr );
-                        tmpImage = makeRGBABufferedImage( wr );
-                        */
-                        /*
-                         * With alterRasterCMYK2BGRA() colors gibbled, without is blank
-                         * Slower, uses more memory, than JPEGImageDecoder
-                        BufferedImage img = op.getAsBufferedImage();
-                        WritableRaster wr = img.getRaster();
-                        alterRasterCMYK2BGRA( wr );
-                        tmpImage = img;
-                        */
-                    } else if (jpegEncoding == ImageUtility.JPEG_ENC_YCCK && bitspercomponent == 8) {
-                        /*
-                         * This way, with or without alterRasterYCbCrA2BGRA(), give blank image
-                        Raster r = op.getData();
-                        WritableRaster wr = (r instanceof WritableRaster)
-                                ? (WritableRaster) r : r.createCompatibleWritableRaster();
-                        alterRasterYCbCrA2BGRA( wr );
-                        tmpImage = makeRGBABufferedImage( wr );
-                        */
-                        /*
-                         * With alterRasterYCbCrA2BGRA() colors gibbled, without is blank
-                         * Slower, uses more memory, than JPEGImageDecoder
-                        BufferedImage img = op.getAsBufferedImage();
-                        WritableRaster wr = img.getRaster();
-                        alterRasterYCbCrA2BGRA( wr );
-                        tmpImage = img;
-                        */
-                    } else {
-                        //System.out.println("Stream.dctDecode()    Other");
-                        /* tmpImage = op.getAsBufferedImage(); */
-                        Class roClass = Class.forName("javax.media.jai.RenderedOp");
-                        Method roGetAsBufferedImage = roClass.getMethod("getAsBufferedImage");
-                        tmpImage = (BufferedImage) roGetAsBufferedImage.invoke(javax_media_jai_RenderedOp_op);
-                        if (tmpImage != null) {
-                            if (Tagger.tagging)
-                                Tagger.tagImage("HandledBy=DCTDecode_JAI");
-                        }
-                    }
-                }
-            } catch (Exception e) {
-                logger.log(Level.FINE, "Problem loading JPEG image via JAI: ", e);
-            }
-
+            logger.log(Level.FINE, "Problem loading JPEG image via ImageIO: ", e);
+        } finally {
             try {
                 input.close();
-            } catch (IOException e) {
-                logger.log(Level.FINE, "Problem closing image stream. ", e);
-            }
-        }
-
-        if (tmpImage == null) {
-            try {
-                //System.out.println("Stream.dctDecode()  Toolkit");
-                byte[] data = getDecodedStreamBytes(width * height
-                        * colourSpace.getNumComponents()
-                        * bitspercomponent / 8);
-                if (data != null) {
-                    Image img = Toolkit.getDefaultToolkit().createImage(data);
-                    if (img != null) {
-                        tmpImage = ImageUtility.makeRGBABufferedImageFromImage(img);
-                        if (Tagger.tagging)
-                            Tagger.tagImage("HandledBy=DCTDecode_ToolkitCreateImage");
-                    }
+                // clean up the image reader and image stream
+                if (reader != null) {
+                    reader.dispose();
                 }
-            } catch (Exception e) {
-                logger.log(Level.FINE, "Problem loading JPEG image via Toolkit: ", e);
+                if (imageInputStream != null) {
+                    imageInputStream.close();
+                }
+            } catch (IOException e) {
+                logger.log(Level.FINE, "Problem loading JPEG image via ImageIO: ", e);
             }
         }
+        // legacy fallback code for creating Image.
+//        if (tmpImage == null) {
+//            try {
+//                //System.out.println("Stream.dctDecode()  Toolkit");
+//                byte[] data = getDecodedStreamBytes(width * height
+//                        * colourSpace.getNumComponents()
+//                        * bitspercomponent / 8);
+//                if (data != null) {
+//                    Image img = Toolkit.getDefaultToolkit().createImage(data);
+//                    if (img != null) {
+//                        tmpImage = ImageUtility.makeRGBABufferedImageFromImage(img);
+//                    }
+//                }
+//            } catch (Exception e) {
+//                logger.log(Level.FINE, "Problem loading JPEG image via Toolkit: ", e);
+//            }
+//        }
         return tmpImage;
     }
 
@@ -691,11 +587,12 @@ public class ImageStream extends Stream {
      * @param width  width of image
      * @param height height of image
      * @return buffered image of decoded jbig2 image stream.   Null if an error
-     *         occured during decode.
+     * occured during decode.
      */
     private BufferedImage jbig2Decode(int width, int height,
-                                      PColorSpace colourSpace, int bitspercomponent) {
-        BufferedImage tmpImage = null;
+                                      PColorSpace colourSpace,
+                                      int bitspercomponent) {
+        BufferedImage tmpImage;
 
         // get the decode params form the stream
         HashMap decodeParms = library.getDictionary(entries, DECODEPARMS_KEY);
@@ -744,7 +641,7 @@ public class ImageStream extends Stream {
      * @param colourSpace      colour space to apply to image.
      * @param bitsPerComponent bits used to represent a colour
      * @return buffered image of the jpeg2000 image stream.  Null if a problem
-     *         occurred during the decode.
+     * occurred during the decode.
      */
     private BufferedImage jpxDecode(int width, int height, PColorSpace colourSpace,
                                     int bitsPerComponent, float[] decode) {
@@ -766,47 +663,77 @@ public class ImageStream extends Stream {
                             * bitsPerComponent / 8);
             ImageInputStream imageInputStream = ImageIO.createImageInputStream(
                     new ByteArrayInputStream(data));
-            tmpImage = ImageIO.read(imageInputStream);
 
-            // check for an instance of ICCBased, we don't currently support
-            // this colour mode well so we'll used the alternative colour
-            if (colourSpace instanceof ICCBased) {
-                ICCBased iccBased = (ICCBased) colourSpace;
-                if (iccBased.getAlternate() != null) {
-                    // set the alternate as the current
-                    colourSpace = iccBased.getAlternate();
-                }
-                // try to process the ICC colour space
-                else {
-                    ColorSpace cs = iccBased.getColorSpace();
-                    ColorConvertOp cco = new ColorConvertOp(cs, null);
-                    tmpImage = cco.filter(tmpImage, null);
+
+            // getting the raster for JPX seems to fail in most cases.
+            Iterator<ImageReader> iter = ImageIO.getImageReaders(imageInputStream);
+            ImageReader reader = null;
+            while (iter.hasNext()) {
+                reader = iter.next();
+                if (reader.canReadRaster()) {
+                    if (logger.isLoggable(Level.FINER)) {
+                        logger.finer("JPXDecode Image reader: " + reader);
+                    }
+                    break;
                 }
             }
 
+            // read the raster data only, as we have our own logic to covert
+            // the raster data to RGB colours.
+            if (reader == null) {
+                imageInputStream.close();
+                return null;
+            }
+            ImageReadParam param = reader.getDefaultReadParam();
+            reader.setInput(imageInputStream, true, true);
+            try {
+                tmpImage = reader.read(0, param);
+            } finally {
+                reader.dispose();
+                imageInputStream.close();
+            }
+            WritableRaster wr = tmpImage.getRaster();
+
+            // special fallback scenario for ICCBased colours.
+            if (colourSpace instanceof ICCBased) {
+                ICCBased iccBased = (ICCBased) colourSpace;
+                // first try and apply the color space
+                try {
+                    ColorSpace cs = iccBased.getColorSpace();
+                    ColorConvertOp cco = new ColorConvertOp(cs, null);
+                    tmpImage = ImageUtility.makeRGBBufferedImage(wr);
+                    cco.filter(tmpImage, tmpImage);
+                } catch (Throwable e) {
+                    logger.warning("Error processing ICC Color profile, failing " +
+                            "back to alternative.");
+                    // set the alternate as the current and try and process
+                    // using the below rules.
+                    colourSpace = iccBased.getAlternate();
+                }
+            }
             // apply respective colour models to the JPEG2000 image.
             if (colourSpace instanceof DeviceRGB && bitsPerComponent == 8) {
-                WritableRaster wr = tmpImage.getRaster();
-                ImageUtility.alterRasterRGB2PColorSpace(wr, colourSpace);
-                tmpImage = ImageUtility.makeRGBBufferedImage(wr);
+                tmpImage = ImageUtility.convertSpaceToRgb(wr, colourSpace, decode);
             } else if (colourSpace instanceof DeviceCMYK && bitsPerComponent == 8) {
-                WritableRaster wr = tmpImage.getRaster();
-                tmpImage = ImageUtility.alterRasterCMYK2BGRA(wr, decode);
-                return tmpImage;
+                tmpImage = ImageUtility.convertCmykToRgb(wr, decode);
             } else if ((colourSpace instanceof DeviceGray)
                     && bitsPerComponent == 8) {
-                WritableRaster wr = tmpImage.getRaster();
                 tmpImage = ImageUtility.makeGrayBufferedImage(wr);
             } else if (colourSpace instanceof Separation) {
-                WritableRaster wr = tmpImage.getRaster();
-                ImageUtility.alterRasterY2Gray(wr, decode);
+                if (colourSpace instanceof Separation &&
+                        ((Separation) colourSpace).isNamedColor()) {
+                    tmpImage = ImageUtility.convertGrayToRgb(wr, decode);
+//                    tmpImage = ImageUtility.makeGrayBufferedImage(wr);
+                } else {
+                    tmpImage = ImageUtility.convertSpaceToRgb(wr, colourSpace, decode);
+                }
             } else if (colourSpace instanceof Indexed) {
-                tmpImage = ImageUtility.applyIndexColourModel(tmpImage, width, height, colourSpace, bitsPerComponent);
+                // still some issue here with Chevron.pdf
+                tmpImage = ImageUtility.applyIndexColourModel(wr, colourSpace, bitsPerComponent);
             }
         } catch (IOException e) {
             logger.log(Level.FINE, "Problem loading JPEG2000 image: ", e);
         }
-
         return tmpImage;
     }
 
@@ -893,8 +820,6 @@ public class ImageStream extends Stream {
             int bitsPerColour,
             float[] decode,
             byte[] baCCITTFaxData) {
-        if (Tagger.tagging)
-            Tagger.tagImage("HandledBy=ParseImage");
 
         // store for manipulating bits in image
         int[] imageBits = new int[width];

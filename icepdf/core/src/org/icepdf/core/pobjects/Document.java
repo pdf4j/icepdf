@@ -20,6 +20,7 @@ import org.icepdf.core.application.ProductInfo;
 import org.icepdf.core.exceptions.PDFException;
 import org.icepdf.core.exceptions.PDFSecurityException;
 import org.icepdf.core.io.*;
+import org.icepdf.core.pobjects.graphics.WatermarkCallback;
 import org.icepdf.core.pobjects.graphics.text.PageText;
 import org.icepdf.core.pobjects.security.SecurityManager;
 import org.icepdf.core.util.Defs;
@@ -89,6 +90,8 @@ public class Document {
         }
     }
 
+    // optional watermark callback
+    private WatermarkCallback watermarkCallback;
 
     // core catalog, root of the document hierarchy.
     private Catalog catalog;
@@ -134,6 +137,17 @@ public class Document {
      * one PDF document.
      */
     public Document() {
+    }
+
+    /**
+     * Sets a page watermark implementation to be painted on top of the page
+     * content.  Watermark can be specified for each page or once by calling
+     * document.setWatermark().
+     *
+     * @param watermarkCallback watermark implementation.
+     */
+    public void setWatermarkCallback(WatermarkCallback watermarkCallback) {
+        this.watermarkCallback = watermarkCallback;
     }
 
     /**
@@ -738,6 +752,7 @@ public class Document {
             try {
                 in.reset();
             } catch (IOException e2) {
+                // forget about it.
             }
         }
         return 0;
@@ -749,7 +764,7 @@ public class Document {
      *
      * @param in input stream to parse.
      * @return 0 if file header is well formed, otherwise the offset to where
-     *         the document header starts.
+     * the document header starts.
      */
     private int skipPastAnyPrefixJunk(SeekableInput in) {
         if (!in.markSupported())
@@ -778,6 +793,7 @@ public class Document {
             try {
                 in.reset();
             } catch (IOException e2) {
+                // forget about it.
             }
         }
         return 0;
@@ -800,7 +816,7 @@ public class Document {
          *      2.  The trailer object must have an ID entry
          */
         boolean madeSecurityManager = false;
-        HashMap encryptDictionary = documentTrailer.getEncrypt();
+        HashMap<Object, Object> encryptDictionary = documentTrailer.getEncrypt();
         List fileID = documentTrailer.getID();
         if (encryptDictionary != null && fileID != null) {
             // create new security manager
@@ -890,8 +906,8 @@ public class Document {
      */
     public PDimension getPageDimension(int pageNumber, float userRotation, float userZoom) {
         Page page = catalog.getPageTree().getPage(pageNumber);
-        page.init();
         if (page != null) {
+            page.init();
             return page.getSize(userRotation, userZoom);
         } else {
             return new PDimension(0, 0);
@@ -1031,6 +1047,7 @@ public class Document {
             try {
                 wrapper.close();
             } catch (IOException e) {
+                // forget about it.
             }
         }
         return documentLength;
@@ -1049,7 +1066,7 @@ public class Document {
         long documentLength = writeToOutputStream(out);
         if (foundIncrementalUpdater) {
             try {
-                Class incrementalUpdaterClass = Class.forName(INCREMENTAL_UPDATER);
+                Class<?> incrementalUpdaterClass = Class.forName(INCREMENTAL_UPDATER);
                 Object[] argValues = {this, out, documentLength};
                 Method method = incrementalUpdaterClass.getDeclaredMethod(
                         "appendIncrementalUpdate",
@@ -1201,11 +1218,15 @@ public class Document {
      * the Page object which makes up the document.
      *
      * @return PageTree specified by the document hierarchy. Null if the document
-     *         has not yet loaded or the catalog can not be found.
+     * has not yet loaded or the catalog can not be found.
      */
     public PageTree getPageTree() {
         if (catalog != null) {
-            return catalog.getPageTree();
+            PageTree pageTree = catalog.getPageTree();
+            if (pageTree != null) {
+                pageTree.setWatermarkCallback(watermarkCallback);
+            }
+            return pageTree;
         } else {
             return null;
         }
@@ -1227,7 +1248,7 @@ public class Document {
      * memory. This method must be set before a call to setByteArray() or
      * setInputStream() is called.
      *
-     * @param cachingEnabled
+     * @param cachingEnabled true to enable, otherwise false.
      */
     public static void setCachingEnabled(boolean cachingEnabled) {
         isCachingEnabled = cachingEnabled;

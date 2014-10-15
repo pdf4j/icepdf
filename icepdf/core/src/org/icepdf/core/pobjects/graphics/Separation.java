@@ -22,6 +22,7 @@ import org.icepdf.core.util.Library;
 
 import java.awt.*;
 import java.util.HashMap;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * <p>Separation Color Space background:</p>
@@ -83,6 +84,10 @@ public class Separation extends PColorSpace {
     private boolean isNone;
     public static final String COLORANT_NONE = "none";
     private float tint = 1.0f;
+    // basic cache to speed up the lookup.
+    private ConcurrentHashMap<Integer, Color> colorTable1B;
+    private ConcurrentHashMap<Integer, Color> colorTable3B;
+    private ConcurrentHashMap<Integer, Color> colorTable4B;
 
     /**
      * Create a new Seperation colour space.  Separation is specified using
@@ -97,6 +102,9 @@ public class Separation extends PColorSpace {
     protected Separation(Library l, HashMap h, Object name, Object alternateSpace, Object tintTransform) {
         super(l, h);
         alternate = getColorSpace(l, alternateSpace);
+        colorTable1B = new ConcurrentHashMap<Integer, Color>(256);
+        colorTable3B = new ConcurrentHashMap<Integer, Color>(256);
+        colorTable4B = new ConcurrentHashMap<Integer, Color>(256);
 
         this.tintTransform = Function.getFunction(l, l.getObject(tintTransform));
         // see if name can be converted to a known colour.
@@ -104,7 +112,8 @@ public class Separation extends PColorSpace {
             String colorName = ((Name) name).getName().toLowerCase();
             // check for additive colours we can work ith .
             if (!(colorName.equals("red") || colorName.equals("blue")
-                    || colorName.equals("blue") || colorName.equals("black"))) {
+                    || colorName.equals("blue") || colorName.equals("black")
+                    || colorName.equals("auto"))) {
                 // sniff out All or Null
                 if (colorName.equals(COLORANT_ALL)) {
                     isAll = true;
@@ -117,6 +126,10 @@ public class Separation extends PColorSpace {
             int colorVaue = ColorUtil.convertNamedColor(colorName.toLowerCase());
             if (colorVaue != -1) {
                 namedColor = new Color(colorVaue);
+            }
+            // quick check for auto color which we'll paint as black
+            if (colorName.equalsIgnoreCase("auto")) {
+                namedColor = Color.BLACK;
             }
         }
     }
@@ -147,7 +160,7 @@ public class Separation extends PColorSpace {
         // there are couple notes in the spec that say that even know namedColor
         // is for subtractive color devices, if the named colour can be represented
         // in a additive device then it should be used over the alternate colour.
-        if (namedColor != null && fillAndStroke) {
+        if (namedColor != null) {
             // apply tint
             tint = components[0];
             // apply tint as an alpha value.
@@ -176,8 +189,19 @@ public class Separation extends PColorSpace {
             return alternate.getColor(alternateColour);
         }
         if (alternate != null && !isNone) {
-            float y[] = tintTransform.calculate(reverse(components));
-            return alternate.getColor(reverse(y));
+            // component is our key which we can use to avoid doing the tintTransform.
+            int key = 0;
+            int bands = components.length;
+            for (int i = 0, bit = 0; i < bands; i++, bit += 8) {
+                key |= (((int) (components[i] * 255) & 0xff) << bit);
+            }
+            if (bands == 1) {
+                return addColorToCache(colorTable1B, key, alternate, tintTransform, components);
+            } else if (bands == 3) {
+                return addColorToCache(colorTable3B, key, alternate, tintTransform, components);
+            } else if (bands == 4) {
+                return addColorToCache(colorTable4B, key, alternate, tintTransform, components);
+            }
         }
         if (isNone) {
             return new Color(0, 0, 0, 0);
@@ -187,6 +211,20 @@ public class Separation extends PColorSpace {
         // -- Only applies to subtractive devices, screens are additive but I'm
         // leaving this in encase something goes horribly wrong.
         return namedColor;
+    }
+
+    private static Color addColorToCache(
+            ConcurrentHashMap<Integer, Color> colorCache, int key,
+            PColorSpace alternate, Function tintTransform, float[] f) {
+        Color color = colorCache.get(key);
+        if (color == null) {
+            float y[] = tintTransform.calculate(reverse(f));
+            color = alternate.getColor(reverse(y));
+            colorCache.put(key, color);
+            return color;
+        } else {
+            return color;
+        }
     }
 
     public float getTint() {

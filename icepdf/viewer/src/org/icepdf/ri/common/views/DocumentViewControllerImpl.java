@@ -50,6 +50,7 @@ import java.util.logging.Logger;
  *
  * @since 2.5
  */
+@SuppressWarnings("serial")
 public class DocumentViewControllerImpl
         implements DocumentViewController, ComponentListener {
 
@@ -82,6 +83,11 @@ public class DocumentViewControllerImpl
      * Displays the pages in two columns, with even-numbered pages on the left.
      */
     public static final int TWO_COLUMN_RIGHT_VIEW = 6;
+
+    /**
+     * Displays the pages in two columns, with even-numbered pages on the left.
+     */
+    public static final int USE_ATTACHMENTS_VIEW = 7;
 
     /**
      * Zoom factor used when zooming in or out.
@@ -126,6 +132,8 @@ public class DocumentViewControllerImpl
     protected int viewType, oldViewType;
 
     protected int viewportFitMode, oldViewportFitMode;
+
+    protected int cursorType;
 
     protected SwingController viewerController;
 
@@ -504,6 +512,14 @@ public class DocumentViewControllerImpl
         setViewType();
     }
 
+    /**
+     * Revert to the previously set view type.
+     */
+    public void revertViewType() {
+        viewType = oldViewType;
+        setViewType(viewType);
+    }
+
     private void setViewType() {
 
         // check if there is current view, if so dispose it
@@ -544,6 +560,10 @@ public class DocumentViewControllerImpl
                     new TwoPageView(this, documentViewScrollPane,
                             documentViewModel,
                             DocumentView.RIGHT_VIEW);
+        } else if (viewType == USE_ATTACHMENTS_VIEW) {
+            documentView =
+                    new CollectionDocumentView(this, documentViewScrollPane,
+                            documentViewModel);
         } else {
             documentView =
                     new OneColumnPageView(this, documentViewScrollPane, documentViewModel);
@@ -569,7 +589,8 @@ public class DocumentViewControllerImpl
 
     public boolean setFitMode(final int fitMode) {
 
-        if (documentViewModel == null) {
+        if (documentViewModel == null || viewType ==
+                DocumentViewControllerImpl.USE_ATTACHMENTS_VIEW) {
             return false;
         }
 
@@ -826,7 +847,8 @@ public class DocumentViewControllerImpl
             // can ge assigned.
             if (changed) {
                 // notify the view of the tool change
-                documentView.setToolMode(viewToolMode);
+                if (documentView != null)
+                    documentView.setToolMode(viewToolMode);
 
                 // notify the page components of the tool change.
                 List<AbstractPageViewComponent> pageComponents =
@@ -852,13 +874,17 @@ public class DocumentViewControllerImpl
         return documentViewModel.getViewToolMode();
     }
 
-    public void setViewCursor(final int currsorType) {
-        Cursor cursor = getViewCursor(currsorType);
+    public void setViewCursor(final int cursorType) {
+        this.cursorType = cursorType;
+        Cursor cursor = getViewCursor(cursorType);
         if (documentViewScrollPane != null) {
-            //documentViewScrollPane.setViewCursor( cursor );
             if (documentViewScrollPane.getViewport() != null)
                 documentViewScrollPane.getViewport().setCursor(cursor);
         }
+    }
+
+    public int getViewCursor() {
+        return cursorType;
     }
 
     public Cursor getViewCursor(final int currsorType) {

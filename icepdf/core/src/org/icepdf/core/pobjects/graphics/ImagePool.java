@@ -46,7 +46,9 @@ import java.util.logging.Logger;
  *
  * @since 5.0
  */
+@SuppressWarnings("serial")
 public class ImagePool {
+
     private static final Logger log =
             Logger.getLogger(ImagePool.class.toString());
 
@@ -86,6 +88,14 @@ public class ImagePool {
             return fCache.get(ref);
         } else {
             return null;
+        }
+    }
+
+    public boolean containsKey(Reference ref) {
+        if (enabled) {
+            return fCache.containsKey(ref);
+        } else {
+            return false;
         }
     }
 
