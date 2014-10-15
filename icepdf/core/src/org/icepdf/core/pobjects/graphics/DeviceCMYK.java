@@ -25,6 +25,7 @@ import java.awt.color.ICC_Profile;
 import java.io.FileInputStream;
 import java.io.InputStream;
 import java.util.HashMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Logger;
 
 /**
@@ -47,6 +48,8 @@ public class DeviceCMYK extends PColorSpace {
 
     // CMYK ICC color profile.
     private static ICC_ColorSpace iccCmykColorSpace;
+    // basic cache to speed up the lookup.
+    private static ConcurrentHashMap<String, Color> iccCmykColorCache;
 
     // disable icc color profile lookups as they can be slow. n
     private static boolean disableICCCmykColorSpace;
@@ -56,6 +59,8 @@ public class DeviceCMYK extends PColorSpace {
         blackRatio = (float) Defs.doubleProperty("org.icepdf.core.cmyk.colorant.black", 1.0);
 
         disableICCCmykColorSpace = Defs.booleanProperty("org.icepdf.core.cmyk.disableICCProfile", false);
+
+        iccCmykColorCache = new ConcurrentHashMap<String, Color>();
 
         // check for a custom CMYK ICC colour profile specified using system properties.
         String customCMYKProfilePath = null;
@@ -209,8 +214,18 @@ public class DeviceCMYK extends PColorSpace {
 
         // check if we have a valid ICC profile to work with
         if (!disableICCCmykColorSpace && iccCmykColorSpace != null) {
-            f = iccCmykColorSpace.toRGB(reverse(f));
-            return new Color(f[0], f[1], f[2]);
+            // very slow key generation but still quite a bit faster then doing
+            // a blind lookup in the icc table
+            String key = new StringBuilder().append(f[0]).append(f[1]).append(f[2])
+                    .append(f[3]).toString();
+            if (iccCmykColorCache.containsKey(key)) {
+                return iccCmykColorCache.get(key);
+            } else {
+                f = iccCmykColorSpace.toRGB(reverse(f));
+                Color color = new Color(f[0], f[1], f[2]);
+                iccCmykColorCache.put(key, color);
+                return color;
+            }
         }
 
         // soften the amount of black, but exclude explicit black colorant.
