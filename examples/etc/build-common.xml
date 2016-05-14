@@ -1,5 +1,5 @@
 <!--
-  ~ Copyright 2006-2014 ICEsoft Technologies Inc.
+  ~ Copyright 2006-2016 ICEsoft Technologies Inc.
   ~
   ~ Licensed under the Apache License, Version 2.0 (the "License");
   ~ you may not use this file except in compliance with the
@@ -23,8 +23,6 @@
     <property name="build.classes.dir" location="${build.dir}/classes"/>
     <property name="build.lib.dir" location="../lib"/>
 
-    <property name="compile.source" value="1.5"/>
-    <property name="compile.target" value="1.5"/>
     <property name="compile.debug" value="true"/>
 
     <property name="productinfo.file" value="ProductInfo.java"/>
@@ -47,6 +45,14 @@
                 batik-xml.jar
                 "
             />
+
+    <patternset id="icepdf.lib.bouncy.jars"
+                includes="
+                bcprov-jdk15on.jar
+                bcprov-ext-jdk15on.jar
+                bcpkix-jdk15on.jar
+                "
+    />
 
     <target name="update.product.info">
         <copy file="${productinfo.src}/${productinfo.file}"
@@ -71,6 +77,9 @@
         <fileset dir="${build.lib.dir}">
             <patternset refid="icepdf.lib.batik.jars"/>
         </fileset>
+        <fileset dir="${build.lib.dir}">
+            <patternset refid="icepdf.lib.bouncy.jars"/>
+        </fileset>
     </path>
 
     <macrodef name="clean">
@@ -92,7 +101,6 @@
             <mkdir dir="${build.classes.dir}"/>
 
             <javac destdir="${build.classes.dir}" sourcepath="" encoding="UTF-8"
-                   source="${compile.source}" target="${compile.target}"
                    includeantruntime="false"
                    debug="${compile.debug}" failonerror="@{failonerror}">
                 <compilerarg value="-Xlint"/>

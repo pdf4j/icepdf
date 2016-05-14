@@ -1,5 +1,5 @@
 <!--
-  ~ Copyright 2006-2014 ICEsoft Technologies Inc.
+  ~ Copyright 2006-2016 ICEsoft Technologies Inc.
   ~
   ~ Licensed under the Apache License, Version 2.0 (the "License");
   ~ you may not use this file except in compliance with the
@@ -43,6 +43,7 @@
         <pathelement location="${build.classes.dir}"/>
         <fileset dir="${build.lib.dir}">
             <patternset refid="icepdf.lib.batik.jars"/>
+            <patternset refid="icepdf.lib.bouncy.jars"/>
             <patternset refid="icepdf.lib.core"/>
         </fileset>
     </path>
@@ -97,6 +98,7 @@
     <target name="javadoc">
         <delete dir="${build.dir}/javadocs"/>
         <javadoc verbose="false" useexternalfile="true" failonerror="true"
+                 encoding="utf8" additionalparam="-Xdoclint:none"
                  destdir="${build.dir}/javadocs" windowtitle="ICEpdf Viewer RI">
             <classpath refid="compile.run.classpath"/>
             <fileset dir="${src.dir}">

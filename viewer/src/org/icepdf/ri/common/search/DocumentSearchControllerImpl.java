@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2014 ICEsoft Technologies Inc.
+ * Copyright 2006-2016 ICEsoft Technologies Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -133,11 +133,8 @@ public class DocumentSearchControllerImpl implements DocumentSearchController {
         // get our our page text reference
         PageText pageText = null;
         if (viewerController != null) {
-            try {
-                pageText = viewerController.getDocument().getPageText(pageIndex);
-            } catch (InterruptedException e) {
-                logger.log(Level.SEVERE, "Page text extraction thread interrupted.", e);
-            }
+            // get access to currently open document instance.
+            pageText = viewerController.getDocument().getPageViewText(pageIndex);
         } else if (document != null) {
             pageText = document.getPageViewText(pageIndex);
         }
@@ -192,8 +189,7 @@ public class DocumentSearchControllerImpl implements DocumentSearchController {
                         else {
                             // found a potential hit, depends on the length
                             // of searchPhrase.
-                            if (wordString.indexOf(
-                                    term.getTerms().get(searchPhraseHitCount)) >= 0) {
+                            if (wordString.contains(term.getTerms().get(searchPhraseHitCount))) {
                                 // add word to potentials
                                 searchPhraseHits.add(word);
                                 searchPhraseHitCount++;
@@ -271,11 +267,8 @@ public class DocumentSearchControllerImpl implements DocumentSearchController {
         // get our our page text reference
         PageText pageText = null;
         if (viewerController != null) {
-            try {
-                pageText = viewerController.getDocument().getPageText(pageIndex);
-            } catch (InterruptedException e) {
-                logger.log(Level.SEVERE, "Page text extraction thread interrupted.", e);
-            }
+            // get access to currently open document.
+            pageText = viewerController.getDocument().getPageViewText(pageIndex);
         } else if (document != null) {
             pageText = document.getPageViewText(pageIndex);
         }
@@ -328,8 +321,7 @@ public class DocumentSearchControllerImpl implements DocumentSearchController {
                         else {
                             // found a potential hit, depends on the length
                             // of searchPhrase.
-                            if (wordString.indexOf(
-                                    term.getTerms().get(searchPhraseHitCount)) >= 0) {
+                            if (wordString.contains(term.getTerms().get(searchPhraseHitCount))) {
                                 // add word to potentials
                                 searchPhraseHits.add(word);
                                 searchPhraseHitCount++;
@@ -527,11 +519,10 @@ public class DocumentSearchControllerImpl implements DocumentSearchController {
         // found words. 
         ArrayList<String> words = new ArrayList<String>();
         char c;
-        char prevC = 32;
+        char cPrev = 0;
         for (int start = 0, curs = 0, max = phrase.length(); curs < max; curs++) {
             c = phrase.charAt(curs);
-            if (!WordText.isDigit(prevC) && (WordText.isWhiteSpace(c) ||
-                    WordText.isPunctuation(c))) {
+            if (WordText.isWhiteSpace(c) || (WordText.isPunctuation(c) && !WordText.isDigit(cPrev))) {
                 // add word segment
                 if (start != curs) {
                     words.add(phrase.substring(start, curs));
@@ -543,7 +534,7 @@ public class DocumentSearchControllerImpl implements DocumentSearchController {
             } else if (curs + 1 == max) {
                 words.add(phrase.substring(start, curs + 1));
             }
-            prevC = c;
+            cPrev = c;
         }
         return words;
     }

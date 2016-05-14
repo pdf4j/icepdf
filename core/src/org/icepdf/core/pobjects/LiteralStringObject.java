@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2014 ICEsoft Technologies Inc.
+ * Copyright 2006-2016 ICEsoft Technologies Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -17,6 +17,7 @@ package org.icepdf.core.pobjects;
 
 import org.icepdf.core.pobjects.fonts.Font;
 import org.icepdf.core.pobjects.fonts.FontFile;
+import org.icepdf.core.pobjects.fonts.ofont.OFont;
 import org.icepdf.core.pobjects.security.SecurityManager;
 import org.icepdf.core.util.Utils;
 
@@ -72,8 +73,8 @@ public class LiteralStringObject implements StringObject {
 
     /**
      * <p>Creates a new literal string object so that it represents the same
-     * sequence of character data specifed by the arguments.  The string
-     * value is assumed to be unencrypted and will be encrytped.  The
+     * sequence of character data specified by the arguments.  The string
+     * value is assumed to be unencrypted and will be encrypted.  The
      * method #LiteralStringObject(String string) should be used if the string
      * is all ready encrypted. This method is used for creating new
      * LiteralStringObject's that are created post document parse. </p>
@@ -87,7 +88,8 @@ public class LiteralStringObject implements StringObject {
                                SecurityManager securityManager) {
         // append string data
         this.reference = reference;
-        // decrypt the string. 
+        // decrypt the string.
+//        stringData = new StringBuilder(string.replaceAll("(?=[()\\\\])", "\\\\"));
         stringData = new StringBuilder(
                 encryption(string, false, securityManager));
     }
@@ -204,22 +206,36 @@ public class LiteralStringObject implements StringObject {
      */
     public StringBuilder getLiteralStringBuffer(final int fontFormat, FontFile font) {
 
-        if (fontFormat == Font.SIMPLE_FORMAT || font.isOneByteEncoding()) {
+        if (fontFormat == Font.SIMPLE_FORMAT
+                || (font.getByteEncoding() == FontFile.ByteEncoding.ONE_BYTE && !(font instanceof OFont))) {
             return stringData;
         } else if (fontFormat == Font.CID_FORMAT) {
-            int charOffset = 2;
             int length = getLength();
-            StringBuilder tmp = new StringBuilder(length);
-            int lastIndex = 0;
             int charValue;
-            for (int i = 0; i < length; i += charOffset) {
-                charValue = getUnsignedInt(i - lastIndex, lastIndex + charOffset);
-                // it is possible to have some cid's that are zero
-                if (charValue > 0 && font.canDisplayEchar((char) charValue)) {
-                    tmp.append((char) charValue);
-                    lastIndex = 0;
-                } else {
-                    lastIndex += charOffset;
+            StringBuilder tmp = new StringBuilder(length);
+            if (font.getByteEncoding() == FontFile.ByteEncoding.MIXED_BYTE) {
+                int charOffset = 1;
+                for (int i = 0; i < length; i += charOffset) {
+                    // check range for possible 2 byte char.
+                    charValue = getUnsignedInt(i, 1);
+                    if (font.canDisplayEchar((char) charValue)) {
+                        tmp.append((char) charValue);
+                    } else {
+                        int charValue2 = getUnsignedInt(i, 2);
+                        if (font.canDisplayEchar((char) charValue2)) {
+                            tmp.append((char) charValue2);
+                            i += 1;
+                        }
+                    }
+                }
+            } else {
+                // we have default 2bytes.
+                int charOffset = 2;
+                for (int i = 0; i < length; i += charOffset) {
+                    int charValue2 = getUnsignedInt(i, 2);
+                    if (font.canDisplayEchar((char) charValue2)) {
+                        tmp.append((char) charValue2);
+                    }
                 }
             }
             return tmp;
@@ -282,7 +298,7 @@ public class LiteralStringObject implements StringObject {
     }
 
     /**
-     * Decryptes or encrtypes a string.
+     * Decrypts or encrypts a string.
      *
      * @param string          string to encrypt or decrypt
      * @param decrypt         true to decrypt string, false otherwise;

@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2014 ICEsoft Technologies Inc.
+ * Copyright 2006-2016 ICEsoft Technologies Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -303,7 +303,7 @@ public class TextSelectionPageHandler extends SelectionBoxHandler
      * @param pageTransform tranform
      * @return page space mouse coordinates.
      */
-    private Point2D.Float convertMouseToPageSpace(Point mousePoint,
+    protected Point2D.Float convertMouseToPageSpace(Point mousePoint,
                                                   AffineTransform pageTransform) {
         Point2D.Float pageMouseLocation = new Point2D.Float();
         try {
@@ -437,7 +437,6 @@ public class TextSelectionPageHandler extends SelectionBoxHandler
 //            }
 //        }
     }
-
 
     /**
      * Simple left to right, top down type selection model, not perfect.

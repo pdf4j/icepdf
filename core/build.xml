@@ -1,5 +1,5 @@
 <!--
-  ~ Copyright 2006-2014 ICEsoft Technologies Inc.
+  ~ Copyright 2006-2016 ICEsoft Technologies Inc.
   ~
   ~ Licensed under the Apache License, Version 2.0 (the "License");
   ~ you may not use this file except in compliance with the
@@ -90,7 +90,7 @@
         <delete includeemptydirs="true" quiet="true">
             <fileset dir="${build.dir}"/>
         </delete>
-        <compile
+        <compile 
                 src.javac.excludes="org/icepdf/"/>
     </target>
 
@@ -115,9 +115,12 @@
     </target>
 
     <target name="javadoc">
+
         <delete dir="${build.dir}/javadocs"/>
         <javadoc verbose="false" useexternalfile="true" failonerror="true"
-                 destdir="${build.dir}/javadocs" windowtitle="ICEpdf API">
+                 encoding="utf8"
+                 destdir="${build.dir}/javadocs" windowtitle="ICEpdf API"
+                 additionalparam="-Xdoclint:none">
             <classpath refid="compile.run.classpath"/>
             <fileset dir="${src.dir}">
                 <exclude name="org/icepdf/core/pobjects/fonts/afm/"/>

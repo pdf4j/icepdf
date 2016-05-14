@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2014 ICEsoft Technologies Inc.
+ * Copyright 2006-2016 ICEsoft Technologies Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -141,7 +141,6 @@ public class Function_0 extends Function {
      * @return array of ouput value n.
      */
     public float[] calculate(float[] x) {
-
         // length of output array
         int n = range.length / 2;
         // ready output array

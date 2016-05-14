@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2014 ICEsoft Technologies Inc.
+ * Copyright 2006-2016 ICEsoft Technologies Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -51,7 +51,6 @@ public class OptionalContent extends Dictionary {
     public static final Name VIEW_VALUE = new Name("View");
     public static final Name DESIGN_VALUE = new Name("Design");
     public static final Name NONE_OC_FLAG = new Name("marked");
-
     private Name baseState = ON_vALUE;
 
     /**
@@ -100,6 +99,10 @@ public class OptionalContent extends Dictionary {
 
     private List<Object> rbGroups;
 
+    // object was created but the PDF doesn't actually have optional content definition and optional content
+    // properties may no longer be valid.
+    private boolean emptyDefinition;
+
     public OptionalContent(Library l, HashMap h) {
         super(l, h);
         groups = new HashMap<Reference, OptionalContentGroup>();
@@ -110,6 +113,10 @@ public class OptionalContent extends Dictionary {
     public void init() {
         if (inited) {
             return;
+        }
+        // test of a valid definition.
+        if (entries == null || entries.size() == 0){
+            emptyDefinition = true;
         }
 
         // build out the optionContentGroups from the OCGs array, array should always
@@ -138,7 +145,7 @@ public class OptionalContent extends Dictionary {
 
             // apply the base state ON|OFF|Unchanged
             Object tmp = library.getName(configurationDictionary, BASE_STATE_KEY);
-            if (tmp != null) {
+            if (tmp != null && tmp instanceof Name) {
                 baseState = (Name) tmp;
             }
 
@@ -171,7 +178,11 @@ public class OptionalContent extends Dictionary {
             // check for an intent entry
             tmp = library.getName(configurationDictionary, INTENT_KEY);
             if (tmp != null) {
-                intent = Arrays.asList((Name) tmp);
+                if (tmp instanceof Name) {
+                    intent = Arrays.asList(new Name[]{(Name) tmp});
+                } else if (tmp instanceof List) {
+                    intent = (List) tmp;
+                }
             }
             // ignore AS for now.
             /**
@@ -292,5 +303,9 @@ public class OptionalContent extends Dictionary {
 
     public OptionalContentGroup getOCGs(Reference reference) {
         return groups.get(reference);
+    }
+
+    public boolean isEmptyDefinition() {
+        return emptyDefinition;
     }
 }

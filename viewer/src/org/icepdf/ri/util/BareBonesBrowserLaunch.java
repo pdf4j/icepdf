@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2014 ICEsoft Technologies Inc.
+ * Copyright 2006-2016 ICEsoft Technologies Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -34,8 +34,6 @@ public class BareBonesBrowserLaunch {
 
     private static final Logger logger =
             Logger.getLogger(BareBonesBrowserLaunch.class.toString());
-
-
     private static final String errMsg =
             "Error attempting to launch web browser";
 

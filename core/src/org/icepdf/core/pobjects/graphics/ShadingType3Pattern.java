@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2014 ICEsoft Technologies Inc.
+ * Copyright 2006-2016 ICEsoft Technologies Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -74,7 +74,7 @@ public class ShadingType3Pattern extends ShadingPattern {
     }
 
     @SuppressWarnings("unchecked")
-    public synchronized void init() {
+    public synchronized void init(GraphicsState graphicsState) {
 
         if (inited) {
             return;

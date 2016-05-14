@@ -128,7 +128,6 @@ public final class JXLayer<V extends Component> extends JComponent
 
     private static final LayerEventController eventController =
             new LayerEventController();
-
     private static final long ACCEPTED_EVENTS =
             AWTEvent.COMPONENT_EVENT_MASK |
                     AWTEvent.CONTAINER_EVENT_MASK |

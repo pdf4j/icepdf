@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2014 ICEsoft Technologies Inc.
+ * Copyright 2006-2016 ICEsoft Technologies Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -19,8 +19,6 @@ import org.icepdf.core.pobjects.ImageStream;
 import org.icepdf.core.pobjects.Page;
 import org.icepdf.core.pobjects.Resources;
 import org.icepdf.core.util.Defs;
-
-import java.awt.*;
 
 /**
  * The ImageReferenceFactory determines which implementation of the
@@ -83,23 +81,23 @@ public class ImageReferenceFactory {
      * The ImageReference is specified by the system property org.icepdf.core.imageReference
      * or by the static instance variable scale type.
      *
-     * @param imageStream image data
-     * @param resources   parent resource object.
-     * @param fillColor   file colour.
+     * @param imageStream   image data
+     * @param resources     parent resource object.
+     * @param graphicsState image graphic state.
      * @return newly create ImageReference.
      */
     public static org.icepdf.core.pobjects.graphics.ImageReference
-    getImageReference(ImageStream imageStream, Resources resources, Color fillColor,
+    getImageReference(ImageStream imageStream, Resources resources, GraphicsState graphicsState,
                       Integer imageIndex, Page page) {
         switch (scaleType) {
             case SCALED:
-                return new ScaledImageReference(imageStream, fillColor, resources, imageIndex, page);
+                return new ScaledImageReference(imageStream, graphicsState, resources, imageIndex, page);
             case SMOOTH_SCALED:
-                return new SmoothScaledImageReference(imageStream, fillColor, resources, imageIndex, page);
+                return new SmoothScaledImageReference(imageStream, graphicsState, resources, imageIndex, page);
             case MIP_MAP:
-                return new MipMappedImageReference(imageStream, fillColor, resources, imageIndex, page);
+                return new MipMappedImageReference(imageStream, graphicsState, resources, imageIndex, page);
             default:
-                return new ImageStreamReference(imageStream, fillColor, resources, imageIndex, page);
+                return new ImageStreamReference(imageStream, graphicsState, resources, imageIndex, page);
         }
     }
 

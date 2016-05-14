@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2014 ICEsoft Technologies Inc.
+ * Copyright 2006-2016 ICEsoft Technologies Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -16,6 +16,7 @@
 package org.icepdf.core.pobjects.graphics;
 
 import org.icepdf.core.io.SeekableInputConstrainedWrapper;
+import org.icepdf.core.pobjects.ImageUtility;
 import org.icepdf.core.pobjects.Name;
 import org.icepdf.core.pobjects.Resources;
 import org.icepdf.core.pobjects.Stream;
@@ -27,6 +28,7 @@ import org.icepdf.core.util.content.ContentParserFactory;
 
 import java.awt.*;
 import java.awt.geom.AffineTransform;
+import java.awt.geom.GeneralPath;
 import java.awt.geom.NoninvertibleTransformException;
 import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
@@ -92,10 +94,8 @@ public class TilingPattern extends Stream implements Pattern {
 
     // A code identifying the type of pattern that this dictionary describes
     private int patternType;
-
     // A code that determines how the color of the pattern cell is to be specified
     private int paintType;
-
     // uncolored tiling pattern colour, if specified.
     private Color unColored;
 
@@ -121,7 +121,6 @@ public class TilingPattern extends Stream implements Pattern {
     // A code that controls adjustments to the spacing of tiles relative to the
     // device pixel grid
     private int tilingType;
-
     // type of PObject, should always be "Pattern"
     private Name type;
 
@@ -155,31 +154,27 @@ public class TilingPattern extends Stream implements Pattern {
     // pattern cell.
     private Rectangle2D bBox;
     private Rectangle2D bBoxMod;
-
     // The desired horizontal spacing between pattern cells, measured in the
     // pattern coordinate system.
     private float xStep;
-
     // The desired vertical spacing between pattern cells, measured in the
     // pattern coordinate system. Note that XStep and YStep may differ from the
     // dimensions of the pattern cell implied by the BBox entry. This allows
     // tiling with irregularly shaped figures. XStep and YStep may be either
     // positive or negative, but not zero.
     private float yStep;
-
     // A resource dictionary containing all of the named resources required by
     // the pattern's content stream
     private Resources resources;
-
     // An array of six numbers specifying the pattern matrix. The default value
     // is the identity matrix [1 0 0 1 0 0].
     private AffineTransform matrix;
-
+    private AffineTransform patternMatrix;
     // Parsed resource data is stored here.
     private Shapes shapes;
 
     // Fill colour
-    public Color fillColour = null;
+    public Color fillColour;
 
     //  initiated flag
     private boolean inited;
@@ -188,6 +183,7 @@ public class TilingPattern extends Stream implements Pattern {
 
     public TilingPattern(Stream stream) {
         super(stream.getLibrary(), stream.getEntries(), stream.getRawBytes());
+        pObjectReference = stream.getPObjectReference();
         initiParams();
     }
 
@@ -273,7 +269,7 @@ public class TilingPattern extends Stream implements Pattern {
     /**
      *
      */
-    public synchronized void init() {
+    public synchronized void init(GraphicsState graphicsState) {
 
         if (inited) {
             return;
@@ -304,18 +300,26 @@ public class TilingPattern extends Stream implements Pattern {
         }
 
         // some encoders set the step to 2^15
-        if (xStep == Short.MAX_VALUE) {
+        if (xStep >= Short.MAX_VALUE) {
             xStep = (float) bBox.getWidth();
         }
-        if (yStep == Short.MAX_VALUE) {
+        if (yStep >= Short.MAX_VALUE) {
             yStep = (float) bBox.getHeight();
         }
         // adjust the bBox so that xStep and yStep can be applied
         // for tile spacing.
         bBoxMod = new Rectangle2D.Double(
                 bBox.getX(), bBox.getY(),
-                bBox.getWidth() == xStep ? bBox.getWidth() : xStep,
-                bBox.getHeight() == yStep ? bBox.getHeight() : yStep);
+                bBox.getWidth() == xStep ? bBox.getWidth() : Math.round(xStep),
+                bBox.getHeight() == yStep ? bBox.getHeight() : Math.round(yStep));
+
+        // bbox is in the pattern coordinate system, so we'll convert it to the current user space.
+        // we start off with the base transform of the page or the xobject before any scaling or
+        // or other modifications takes place on the CTM.
+        patternMatrix = new AffineTransform();
+        patternMatrix.concatenate(matrix);
+        GeneralPath tmp = new GeneralPath(bBoxMod);
+        bBoxMod = tmp.createTransformedShape(patternMatrix).getBounds2D();
     }
 
     /**
@@ -346,49 +350,43 @@ public class TilingPattern extends Stream implements Pattern {
             originalPageSpace = new AffineTransform();
         }
 
-        // adjust the scale of the matrix as we zoom in
-//            AffineTransform matrix = new AffineTransform(this.matrix);
-//            matrix.scale(matrix.getScaleX() * (1/context.getScaleX()),
-//                    matrix.getScaleY() * (1/context.getScaleY()));
-
-        // convert to original page space
-        Rectangle2D bBoxMod = matrix.createTransformedShape(this.bBoxMod).getBounds2D();
         // scale to the current state of g2d.
-        bBoxMod = originalPageSpace.createTransformedShape(bBoxMod).getBounds2D();
+        Rectangle2D bBoxMod = originalPageSpace.createTransformedShape(this.bBoxMod).getBounds2D();
 
-        // calculate the offset of the pattern so we paint it at the right coordinate,
-        // basically upside down revers.
-        double xOffset = (base.getTranslateX() - g.getTransform().getTranslateX()) * (1 / base.getScaleX())
-                + matrix.getTranslateX();
-        xOffset *= context.getScaleX() * base.getScaleX();
-        double yOffset = (base.getTranslateY() - g.getTransform().getTranslateY()) * (1 / -base.getScaleY())
-                - matrix.getTranslateY();
-        yOffset *= context.getScaleY() * -base.getScaleY();
+        int width = (int) Math.round(bBoxMod.getWidth());
+        int height = (int) Math.round(bBoxMod.getHeight());
 
+        double baseScale = 1.0f;
+        if ((width < 115 || height < 115) && base.getScaleX() >= 1) {
+            baseScale = base.getScaleX() * 2;
+            if (baseScale > 25) {
+                baseScale = 25;
+            }
+        }
 
-        double scaledWidth = bBoxMod.getWidth();//* (base.getScaleX());
-        double scaledHeight = bBoxMod.getHeight();// * (-base.getScaleY());
-
-        int width = (int) Math.round(scaledWidth);
-        int height = (int) Math.round(scaledHeight);
-
-//        System.out.println(xOffset + " " + yOffset);
-//        System.out.println("context " + context);
-//        System.out.println("base    " + base);
-//        System.out.println("g       " + g.getTransform());
-//        System.out.println("origSp  " + originalPageSpace);
-//        System.out.println("matrix  " + matrix);
-//        System.out.println();
-        // corner cases where some bBoxes don't have a dimension.
         if (width < 1) {
             width = 1;
         }
         if (height < 1) {
             height = 1;
         }
+
+        // calculate the offset of the pattern so we paint it at the right coordinate,
+        // basically upside down revers.
+        double xOffset = (base.getTranslateX() - g.getTransform().getTranslateX()) * (1 / base.getScaleX())
+                + matrix.getTranslateX();
+        xOffset *= context.getScaleX() * base.getScaleX();
+        if (Double.isNaN(xOffset)) xOffset = 0;
+        double yOffset = (base.getTranslateY() - g.getTransform().getTranslateY()) * (1 / -base.getScaleY())
+                - matrix.getTranslateY();
+        yOffset *= context.getScaleY() * -base.getScaleY();
+        if (Double.isNaN(yOffset)) yOffset = 0;
+        // corner cases where some bBoxes don't have a dimension.
+        double imageWidth = width * baseScale;
+        double imageHeight = height * baseScale;
+
         // create the new image to write too.
-        final BufferedImage bi = new BufferedImage(width, height,
-                BufferedImage.TYPE_INT_ARGB);
+        final BufferedImage bi = ImageUtility.createTranslucentCompatibleImage((int)Math.round(imageWidth), (int) Math.round(imageHeight));
         Graphics2D canvas = bi.createGraphics();
 
         TexturePaint patternPaint = new TexturePaint(bi, new Rectangle2D.Double(
@@ -403,39 +401,37 @@ public class TilingPattern extends Stream implements Pattern {
         final Shapes tilingShapes = getShapes();
 
         // add clip for bBoxMod, needed for some shapes painting.
-        canvas.setClip(0, 0, width, height);
+        canvas.setClip(0, 0, (int) imageWidth, (int) imageHeight);
 
         // paint the pattern
-        paintPattern(canvas, tilingShapes, matrix, originalPageSpace);
+        paintPattern(canvas, tilingShapes, matrix, originalPageSpace, baseScale);
 
         // show it in a frame
-//            final JFrame f = new JFrame(this.toString());
-//            final int w = width;
-//            final int h = height;
-//            f.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
-//            f.getContentPane().add(new JComponent() {
-//                @Override
-//                public void paint(Graphics g_) {
-//                    super.paint(g_);
-//                    Graphics2D g2d = (Graphics2D) g_;
-//                    g2d.scale(5, 5);
-////                    // draw the tile image buffer.
-//                    g2d.drawImage(bi,10,10,null);
-//                    g2d.setColor(Color.red);
-//                    g2d.drawRect(10,10,w,h);
-////                    g2d.setColor(Color.WHITE);
-////                    g2d.fillRect(0, 0, 800, 800);
-////                    paintPattern(g2d, tilingShapes, matrix, base);
-//                }
-//            });
-//            f.setSize(new Dimension(800, 800));
-//            f.setVisible(true);
+//        final JFrame f = new JFrame(this.toString());
+//        final int w = (int) bBoxMod.getWidth();
+//        final int h = (int) bBoxMod.getHeight();
+//        final double scale = base.getScaleX();
+//        final AffineTransform tmpPatternMatrix = originalPageSpace;
+//        f.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
+//        f.getContentPane().add(new JComponent() {
+//            @Override
+//            public void paint(Graphics g_) {
+//                super.paint(g_);
+//                Graphics2D g2d = (Graphics2D) g_;
+//                g2d.scale(scale, scale);
+//                g2d.setPaint(patternPaint);
+//                g2d.fillRect(0, 0, 1000, 1000);
+//            }
+//        });
+//        f.setSize(new Dimension(800, 800));
+//        f.setVisible(true);
         // post paint cleanup
         canvas.dispose();
         bi.flush();
     }
 
-    private void paintPattern(Graphics2D g2d, Shapes tilingShapes, AffineTransform matrix, AffineTransform base) {
+    private void paintPattern(Graphics2D g2d, Shapes tilingShapes, AffineTransform matrix, AffineTransform base,
+                              double scale) {
 
         // store previous state so we can draw bounds
         AffineTransform preAf = g2d.getTransform();
@@ -452,7 +448,7 @@ public class TilingPattern extends Stream implements Pattern {
                 0,
                 0);
         g2d.setTransform(af2);
-
+        g2d.scale(scale, scale);
         // pain the key pattern
         AffineTransform prePaint = g2d.getTransform();
         tilingShapes.paint(g2d);
@@ -462,6 +458,7 @@ public class TilingPattern extends Stream implements Pattern {
 //        g2d.setColor(Color.GREEN);
 //        g2d.drawRect(1, 1, (int) bBox.getWidth() - 3, (int) bBox.getHeight() - 3);
 //        g2d.setColor(Color.RED);
+//        g2d.draw(bBox);
 //        g2d.drawRect(1, 1, 5, 5);
 
         // build the the tile
@@ -502,13 +499,6 @@ public class TilingPattern extends Stream implements Pattern {
 
         g2d.translate(xStep, 0);
         tilingShapes.paint(g2d);
-
-        // highlight key square.
-//        g2d.setTransform(prePaint);
-//        g2d.setColor(Color.red);
-//        // direction line and bounding box
-//        g2d.fillRect((int)bBox.getX(), (int)bBox.getY(), 10,10);
-//        g2d.drawRect((int)bBox.getX(), (int)bBox.getY(), (int)bBox.getWidth()-1,(int)bBox.getHeight()-1);
 
         g2d.setTransform(preAf);
     }

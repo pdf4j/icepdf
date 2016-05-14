@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2014 ICEsoft Technologies Inc.
+ * Copyright 2006-2016 ICEsoft Technologies Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -27,11 +27,13 @@ import org.icepdf.core.pobjects.security.Permissions;
 import org.icepdf.core.search.DocumentSearchController;
 import org.icepdf.core.util.Library;
 import org.icepdf.core.util.PropertyConstants;
+import org.icepdf.core.util.Utils;
 import org.icepdf.ri.common.search.DocumentSearchControllerImpl;
 import org.icepdf.ri.common.utility.annotation.AnnotationPanel;
 import org.icepdf.ri.common.utility.layers.LayersPanel;
 import org.icepdf.ri.common.utility.outline.OutlineItemTreeNode;
 import org.icepdf.ri.common.utility.search.SearchPanel;
+import org.icepdf.ri.common.utility.signatures.SignaturesPanel;
 import org.icepdf.ri.common.utility.thumbs.ThumbnailsPanel;
 import org.icepdf.ri.common.views.*;
 import org.icepdf.ri.common.views.annotations.AnnotationState;
@@ -93,17 +95,11 @@ public class SwingController
             Logger.getLogger(SwingController.class.toString());
 
     public static final int CURSOR_OPEN_HAND = 1;
-
     public static final int CURSOR_CLOSE_HAND = 2;
-
     public static final int CURSOR_ZOOM_IN = 3;
-
     public static final int CURSOR_ZOOM_OUT = 4;
-
     public static final int CURSOR_WAIT = 6;
-
     public static final int CURSOR_SELECT = 7;
-
     public static final int CURSOR_DEFAULT = 8;
 
     private static final int MAX_SELECT_ALL_PAGE_COUNT = 250;
@@ -119,16 +115,12 @@ public class SwingController
     private JMenuItem printSetupMenuItem;
     private JMenuItem printMenuItem;
     private JMenuItem exitMenuItem;
-
     private JMenuItem undoMenuItem;
     private JMenuItem redoMenuItem;
-
     private JMenuItem copyMenuItem;
     private JMenuItem deleteMenuItem;
-
     private JMenuItem selectAllMenuItem;
     private JMenuItem deselectAllMenuItem;
-
     private JMenuItem fitActualSizeMenuItem;
     private JMenuItem fitPageMenuItem;
     private JMenuItem fitWidthMenuItem;
@@ -138,60 +130,48 @@ public class SwingController
     private JMenuItem rotateRightMenuItem;
     private JMenuItem showHideToolBarMenuItem;
     private JMenuItem showHideUtilityPaneMenuItem;
-
     private JMenuItem firstPageMenuItem;
     private JMenuItem previousPageMenuItem;
     private JMenuItem nextPageMenuItem;
     private JMenuItem lastPageMenuItem;
     private JMenuItem searchMenuItem;
     private JMenuItem goToPageMenuItem;
-
     private JMenuItem minimiseAllMenuItem;
     private JMenuItem bringAllToFrontMenuItem;
     private List windowListMenuItems;
-
     private JMenuItem aboutMenuItem;
-
     private JButton openFileButton;
     private JButton saveAsFileButton;
     private JButton printButton;
     private JButton searchButton;
     private JToggleButton showHideUtilityPaneButton;
-
     private JButton firstPageButton;
     private JButton previousPageButton;
     private JButton nextPageButton;
     private JButton lastPageButton;
     private JTextField currentPageNumberTextField;
     private JLabel numberOfPagesLabel;
-
     private JButton zoomInButton;
     private JButton zoomOutButton;
     private JComboBox zoomComboBox;
-
     private JToggleButton fitActualSizeButton;
     private JToggleButton fitHeightButton;
     private JToggleButton fitWidthButton;
-
     private JToggleButton fontEngineButton;
-
     private JToggleButton facingPageViewContinuousButton;
     private JToggleButton singlePageViewContinuousButton;
     private JToggleButton facingPageViewNonContinuousButton;
     private JToggleButton singlePageViewNonContinuousButton;
-
     private JButton rotateLeftButton;
     private JButton rotateRightButton;
-
     private JToggleButton panToolButton;
     private JToggleButton textSelectToolButton;
     private JToggleButton zoomInToolButton;
     private JToggleButton zoomDynamicToolButton;
-
     private JToggleButton selectToolButton;
     private JToggleButton highlightAnnotationToolButton;
     private JToggleButton textAnnotationToolButton;
-
+    private JToggleButton formHighlightButton;
     private JToggleButton linkAnnotationToolButton;
     private JToggleButton highlightAnnotationUtilityToolButton;
     private JToggleButton strikeOutAnnotationToolButton;
@@ -203,33 +183,25 @@ public class SwingController
     private JToggleButton inkAnnotationToolButton;
     private JToggleButton freeTextAnnotationToolButton;
     private JToggleButton textAnnotationUtilityToolButton;
-
     private JToolBar completeToolBar;
-
     // Printing in background thread monitors
     private ProgressMonitor printProgressMonitor;
     private Timer printActivityMonitor;
-
     private JTree outlinesTree;
     private JScrollPane outlinesScrollPane;
     private SearchPanel searchPanel;
     private ThumbnailsPanel thumbnailsPanel;
     private LayersPanel layersPanel;
+    private SignaturesPanel signaturesPanel;
     private AnnotationPanel annotationPanel;
     private JTabbedPane utilityTabbedPane;
-
     private JSplitPane utilityAndDocumentSplitPane;
     private int utilityAndDocumentSplitPaneLastDividerLocation;
-
     private JLabel statusLabel;
-
     private JFrame viewer;
-
-
     private WindowManagementCallback windowManagementCallback;
     // simple model for swing controller, mainly printer and  file loading state.
     private ViewModel viewModel;
-
     // subcontroller for document view or document page views.
     private DocumentViewControllerImpl documentViewController;
 
@@ -240,7 +212,6 @@ public class SwingController
 
 
     private Document document;
-
     private boolean disposed;
 
     // internationalization messages, loads message for default JVM locale.
@@ -625,7 +596,6 @@ public class SwingController
         mi.addActionListener(this);
     }
 
-
     /**
      * Called by SwingViewerBuilder, so that SwingController can setup event handling
      */
@@ -919,12 +889,20 @@ public class SwingController
 
     /**
      * Called by SwingViewerBuilder, so that SwingController can setup event handling
+     * for the form highlight button.
+     */
+    public void setFormHighlightButton(JToggleButton btn) {
+        formHighlightButton = btn;
+        btn.addActionListener(this);
+    }
+
+    /**
+     * Called by SwingViewerBuilder, so that SwingController can setup event handling
      */
     public void setTextAnnotationUtilityToolButton(JToggleButton btn) {
         textAnnotationUtilityToolButton = btn;
         btn.addItemListener(this);
     }
-
 
     /**
      * Called by SwingViewerBuilder, so that SwingController can setup event handling
@@ -940,7 +918,6 @@ public class SwingController
     public void setCompleteToolBar(JToolBar toolbar) {
         completeToolBar = toolbar;
     }
-
 
     /**
      * Called by SwingViewerBuilder, so that SwingController can setup event handling
@@ -970,6 +947,10 @@ public class SwingController
      */
     public void setLayersPanel(LayersPanel tn) {
         layersPanel = tn;
+    }
+
+    public void setSignaturesPanel(SignaturesPanel tn) {
+        signaturesPanel = tn;
     }
 
     /**
@@ -1044,11 +1025,28 @@ public class SwingController
     public boolean isPdfCollection() {
         Catalog catalog = document.getCatalog();
         if (catalog.getNames() != null && catalog.getNames().getEmbeddedFilesNameTree() != null
-                && catalog.getNames().getEmbeddedFilesNameTree().getRoot().getNamesAndValues() != null) {
+                && catalog.getNames().getEmbeddedFilesNameTree().getRoot() != null) {
             // one final check as some docs will have meta data but will specify a page mode.
             if (catalog.getObject(Catalog.PAGEMODE_KEY) == null ||
                     ((Name) catalog.getObject(Catalog.PAGEMODE_KEY)).getName().equalsIgnoreCase("UseAttachments")) {
-                return true;
+                // check to see that at least one of the files is a PDF
+                NameTree embeddedFilesNameTree = catalog.getNames().getEmbeddedFilesNameTree();
+                java.util.List filePairs = embeddedFilesNameTree.getNamesAndValues();
+                boolean found = false;
+                if (filePairs != null) {
+                    Library library = catalog.getLibrary();
+                    // check to see if at least one file is a PDF.
+                    for (int i = 0, max = filePairs.size(); i < max; i += 2) {
+                        // get the name and document for
+                        // file name and file specification pairs.
+                        String fileName = Utils.convertStringObject(library, (StringObject) filePairs.get(i));
+                        if (fileName != null && fileName.toLowerCase().endsWith(".pdf")) {
+                            found = true;
+                            break;
+                        }
+                    }
+                }
+                return found;
             }
         }
         return false;
@@ -1172,6 +1170,7 @@ public class SwingController
         setEnabled(freeTextAnnotationToolButton, opened && canModify && !pdfCollection);
         setEnabled(textAnnotationToolButton, opened && canModify && !pdfCollection);
         setEnabled(textAnnotationUtilityToolButton, opened && canModify && !pdfCollection);
+        setEnabled(formHighlightButton, opened && !pdfCollection && hasForms());
         setEnabled(fontEngineButton, opened && !pdfCollection);
         setEnabled(facingPageViewContinuousButton, opened && !pdfCollection);
         setEnabled(singlePageViewContinuousButton, opened && !pdfCollection);
@@ -1183,7 +1182,17 @@ public class SwingController
             reflectFitInFitButtons();
             reflectDocumentViewModeInButtons();
             reflectToolInToolButtons();
+            reflectFormHighlightButtons();
         }
+    }
+
+    private boolean hasForms() {
+        if (document == null) {
+            return false;
+        }
+        return !(document.getCatalog().getInteractiveForm() == null ||
+                document.getCatalog().getInteractiveForm().getFields() == null ||
+                document.getCatalog().getInteractiveForm().getFields().size() == 0);
     }
 
     private void reflectPageChangeInComponents() {
@@ -1585,6 +1594,8 @@ public class SwingController
                 ));
         reflectSelectionInButton(showHideUtilityPaneButton,
                 isUtilityPaneVisible());
+        reflectSelectionInButton(formHighlightButton,
+                viewModel.isWidgetAnnotationHighlight());
     }
 
     /**
@@ -1601,6 +1612,16 @@ public class SwingController
                 isDocumentFitMode(DocumentViewController.PAGE_FIT_WINDOW_HEIGHT));
         reflectSelectionInButton(fitActualSizeButton,
                 isDocumentFitMode(DocumentViewController.PAGE_FIT_ACTUAL_SIZE));
+    }
+
+    /**
+     * Sets the state of the highlight forms button.  Insures button is depressed when active.
+     */
+    private void reflectFormHighlightButtons() {
+        if (document == null) {
+            return;
+        }
+        reflectSelectionInButton(formHighlightButton, viewModel.isWidgetAnnotationHighlight());
     }
 
     /**
@@ -2187,6 +2208,10 @@ public class SwingController
             layersPanel.setDocument(document);
         }
 
+        if (signaturesPanel != null) {
+            signaturesPanel.setDocument(document);
+        }
+
         // Refresh the properties manager object if we don't already have one
         // This would be not null if the UI was constructed manually
         if ((propertiesManager == null) && (windowManagementCallback != null)) {
@@ -2253,6 +2278,12 @@ public class SwingController
             setUtilityPaneVisible(showUtilityPane);
         }
 
+        // apply state value for whether form highlight is being used or not.
+        boolean showFormHighlight = PropertiesManager.checkAndStoreBooleanProperty(
+                propertiesManager,
+                PropertiesManager.PROPERTY_VIEWPREF_FORM_HIGHLIGHT, true);
+        setFormHighlightVisible(showFormHighlight);
+
         // check if there are layers and enable/disable the tab as needed
         OptionalContent optionalContent = document.getCatalog().getOptionalContent();
         if (layersPanel != null && utilityTabbedPane != null) {
@@ -2264,6 +2295,24 @@ public class SwingController
                 utilityTabbedPane.setEnabledAt(
                         utilityTabbedPane.indexOfComponent(layersPanel),
                         true);
+            }
+        }
+        // check if there are signatures and enable/disable the tab as needed
+        boolean signaturesExist = document.getCatalog().getInteractiveForm() != null &&
+                document.getCatalog().getInteractiveForm().isSignatureFields();
+        if (signaturesPanel != null && utilityTabbedPane != null) {
+            if (signaturesExist) {
+                utilityTabbedPane.setEnabledAt(
+                        utilityTabbedPane.indexOfComponent(signaturesPanel),
+                        true);
+                // shows the signature pain on load.
+//                setUtilityPaneVisible(true);
+//                utilityTabbedPane.setSelectedIndex(utilityTabbedPane.indexOfComponent(signaturesPanel));
+
+            } else {
+                utilityTabbedPane.setEnabledAt(
+                        utilityTabbedPane.indexOfComponent(signaturesPanel),
+                        false);
             }
         }
 
@@ -2311,6 +2360,10 @@ public class SwingController
             layersPanel.setDocument(null);
         }
 
+        if (signaturesPanel != null) {
+            signaturesPanel.setDocument(null);
+        }
+
         // set the default cursor.  
         documentViewController.closeDocument();
 
@@ -2338,6 +2391,7 @@ public class SwingController
         // update thew view to show no pages in the view
         updateDocumentView();
 
+        // tear down the outline tree.
         TreeModel treeModel = (outlinesTree != null) ? outlinesTree.getModel() : null;
         if (treeModel != null) {
             OutlineItemTreeNode root = (OutlineItemTreeNode) treeModel.getRoot();
@@ -2461,6 +2515,7 @@ public class SwingController
         freeTextAnnotationToolButton = null;
         textAnnotationToolButton = null;
         textAnnotationUtilityToolButton = null;
+        formHighlightButton = null;
 
         fontEngineButton = null;
 
@@ -2481,6 +2536,9 @@ public class SwingController
         }
         if (layersPanel != null) {
             layersPanel.dispose();
+        }
+        if (signaturesPanel != null) {
+            signaturesPanel.dispose();
         }
         if (utilityTabbedPane != null) {
             utilityTabbedPane.removeAll();
@@ -2532,7 +2590,7 @@ public class SwingController
         }
 
         if (document.getStateManager().isChanged() &&
-                !document.foundIncrementalUpdater) {
+                !Document.foundIncrementalUpdater) {
             org.icepdf.ri.util.Resources.showMessageDialog(
                     viewer,
                     JOptionPane.INFORMATION_MESSAGE,
@@ -2563,7 +2621,7 @@ public class SwingController
             );
             if (lastSeparator >= 0) {
                 originalFileName = origin.substring(lastSeparator + 1);
-                if (originalFileName != null && originalFileName.length() > 0) {
+                if (originalFileName.length() > 0) {
                     // Set the selected file to a slightly modified name of the original
                     fileChooser.setSelectedFile(new File(generateNewSaveName(originalFileName)));
                 } else {
@@ -2663,8 +2721,7 @@ public class SwingController
             }
             return result;
         }
-
-        return fileName;
+        return null;
     }
 
     /**
@@ -2758,7 +2815,7 @@ public class SwingController
                     SwingWorker worker = new SwingWorker() {
                         public Object construct() {
                             // save the file
-                            String error;
+                            String error = null;
                             try {
                                 // It is important to create a UTF-8 encoded file.
                                 OutputStreamWriter out = new OutputStreamWriter(new FileOutputStream(file), "UTF-8");
@@ -2767,7 +2824,6 @@ public class SwingController
                                         pageIndex,
                                         out);
                                 out.close();
-                                error = null;
                             } catch (Throwable e) {
                                 error = e.getMessage();
                                 logger.log(Level.FINE, "Error exporting to SVG");
@@ -2795,12 +2851,11 @@ public class SwingController
                                         messageBundle.getString("viewer.dialog.exportSVG.status.error.msg"));
                                 tmpMsg = formatter.format(messageArguments);
                             }
-                            final String msg = tmpMsg;
 
                             Runnable doSwingWork = new Runnable() {
                                 public void run() {
                                     if (statusLabel != null)
-                                        statusLabel.setText(msg);
+                                        statusLabel.setText(tmpMsg);
                                 }
                             };
                             SwingUtilities.invokeLater(doSwingWork);
@@ -2843,7 +2898,7 @@ public class SwingController
         // want to save the changes.
         if (document != null) {
             boolean documentChanges = document.getStateManager().isChanged();
-            if (documentChanges && document.foundIncrementalUpdater) {
+            if (documentChanges && Document.foundIncrementalUpdater) {
 
                 Object[] colorArgument = new Object[]{document.getDocumentOrigin()};
                 MessageFormat formatter = new MessageFormat(
@@ -3215,37 +3270,47 @@ public class SwingController
     public void followOutlineItem(OutlineItem o) {
         if (o == null)
             return;
-
-        // capture the action if no destination is found and point to the
-        // actions destination information
-        Destination dest = o.getDest();
-        if (o.getAction() != null) {
-            Action action = o.getAction();
-            if (action instanceof GoToAction) {
-                dest = ((GoToAction) action).getDestination();
-            } else if (action instanceof URIAction) {
-                BareBonesBrowserLaunch.openURL(
-                        ((URIAction) action).getURI());
-            } else {
-                Library library = action.getLibrary();
-                HashMap entries = action.getEntries();
-                dest = new Destination(library, library.getObject(entries, Destination.D_KEY));
-            }
-        }
-
-        // Process the destination information
-        if (dest == null)
-            return;
-
         int oldTool = getDocumentViewToolMode();
         try {
+
             // set hour glass
+            outlinesTree.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
             setDisplayTool(DocumentViewModelImpl.DISPLAY_TOOL_WAIT);
+
+            // capture the action if no destination is found and point to the
+            // actions destination information
+            Destination dest = o.getDest();
+            if (o.getAction() != null) {
+                Action action = o.getAction();
+                if (action instanceof GoToAction) {
+                    dest = ((GoToAction) action).getDestination();
+                } else if (action instanceof URIAction) {
+                    BareBonesBrowserLaunch.openURL(
+                            ((URIAction) action).getURI());
+                } else {
+                    Library library = action.getLibrary();
+                    HashMap entries = action.getEntries();
+                    dest = new Destination(library, library.getObject(entries, Destination.D_KEY));
+                }
+            } else if (dest.getNamedDestination() != null) {
+                // building the namedDestination tree can be very time consuming, so we need
+                // update the icons accordingly.
+                NamedDestinations namedDestinations = document.getCatalog().getDestinations();
+                if (namedDestinations != null) {
+                    dest = namedDestinations.getDestination(dest.getNamedDestination());
+                }
+            }
+
+            // Process the destination information
+            if (dest == null)
+                return;
+
             // let the document view controller resolve the destination
             documentViewController.setDestinationTarget(dest);
         } finally {
             // set the icon back to the pointer
             setDisplayTool(oldTool);
+            outlinesTree.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
         }
     }
 
@@ -3283,7 +3348,7 @@ public class SwingController
     /**
      * Zoom to a new zoom level, without centering on any new specific point
      *
-     * @param zoom
+     * @param zoom zoom value passed to view controller.
      */
     public void setZoom(float zoom) {
         documentViewController.setZoom(zoom);
@@ -3299,7 +3364,7 @@ public class SwingController
     /**
      * Returns tree if there is a current page associated with this controller.
      *
-     * @return true if their is a currentpage, otherwise false.
+     * @return true if their is a current page, otherwise false.
      */
     public boolean isCurrentPage() {
         PageTree pageTree = getPageTree();
@@ -3535,12 +3600,40 @@ public class SwingController
     }
 
     /**
+     * Set the form highlight mode for the viewer.
+     *
+     * @param visible true enables the highlight mode, otherwise; false.
+     */
+    private void setFormHighlightVisible(boolean visible) {
+        viewModel.setIsWidgetAnnotationHighlight(visible);
+
+        // update annotation state for highlight
+        document.setFormHighlight(viewModel.isWidgetAnnotationHighlight());
+
+        // repaint the page.
+        ((AbstractDocumentView) documentViewController.getDocumentView()).repaint();
+    }
+
+    /**
      * Flips the visibility of the utility pane to the opposite of what it was
      *
      * @see #setUtilityPaneVisible(boolean)
      */
     public void toggleUtilityPaneVisibility() {
         setUtilityPaneVisible(!isUtilityPaneVisible());
+    }
+
+    /**
+     * Flips the visibility of the form highlight functionality ot hte opposite of what it was.
+     */
+    public void toggleFormHighlight() {
+        viewModel.setIsWidgetAnnotationHighlight(!viewModel.isWidgetAnnotationHighlight());
+        // write the property for next viewing.
+        propertiesManager.setBoolean(PropertiesManager.PROPERTY_VIEWPREF_FORM_HIGHLIGHT,
+                viewModel.isWidgetAnnotationHighlight());
+        reflectFormHighlightButtons();
+
+        setFormHighlightVisible(viewModel.isWidgetAnnotationHighlight());
     }
 
     /**
@@ -3950,6 +4043,8 @@ public class SwingController
                         rotateRight();
                     } else if (source == showHideUtilityPaneMenuItem || source == showHideUtilityPaneButton) {
                         toggleUtilityPaneVisibility();
+                    } else if (source == formHighlightButton) {
+                        toggleFormHighlight();
                     } else if (source == firstPageMenuItem || source == firstPageButton) {
                         showPage(0);
                     } else if (source == previousPageMenuItem || source == previousPageButton) {

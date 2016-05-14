@@ -24,45 +24,37 @@ public class Names extends Dictionary {
      * A name tree mapping name strings to destinations.
      */
     public static final Name DEST_KEY = new Name("Dests");
-
     /**
      * A name tree mapping name strings to annotation appearance streams.
      */
     public static final Name ANNOTATION_APPEARANCE_KEY = new Name("AP");
-
     /**
      * A name tree mapping name strings to document-level JavaScript actions.
      */
     public static final Name JAVASCRIPT_KEY = new Name("JavaScript");
-
     /**
      * A name tree mapping name strings to visible pages for use in interactive
      * forms.
      */
     public static final Name PAGES_KEY = new Name("Pages");
-
     /**
      * A name tree mapping name strings to invisible (template) pages for use
      * in interactive forms.
      */
     public static final Name TEMPLATES_KEY = new Name("Templates");
-
     /**
      * A name tree mapping digital identifiers to Web Capture content sets.
      */
     public static final Name IDS_KEY = new Name("IDS");
-
     /**
      * A name tree mapping name strings to file specifications for embedded
      * file streams.
      */
     public static final Name EMBEDDED_FILES_KEY = new Name("EmbeddedFiles");
-
     /**
      * A name tree mapping name strings to alternate presentations.
      */
     public static final Name ALTERNATE_PRESENTATIONS_KEY = new Name("AlternatePresentations");
-
     /**
      * A name tree mapping name strings (which shall have Unicode encoding) to
      * rendition objects.

@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2014 ICEsoft Technologies Inc.
+ * Copyright 2006-2016 ICEsoft Technologies Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -39,15 +39,15 @@ public class ICCBased extends PColorSpace {
     public static final Name ICCBASED_KEY = new Name("ICCBased");
     public static final Name N_KEY = new Name("N");
 
-    int numcomp;
-    PColorSpace alternate;
-    Stream stream;
-    ColorSpace colorSpace;
+    private int numcomp;
+    private PColorSpace alternate;
+    private Stream stream;
+    private ColorSpace colorSpace;
 
     // basic cache to speed up the lookup, can't be static as we handle
     // 3 and 4 band colours.
-    private static ConcurrentHashMap<Integer, Color> iccColorCache3B;
-    private static ConcurrentHashMap<Integer, Color> iccColorCache4B;
+    private ConcurrentHashMap<Integer, Color> iccColorCache3B;
+    private ConcurrentHashMap<Integer, Color> iccColorCache4B;
 
     // setting up an ICC colour look up is expensive, so if we get a failure
     // we just fallback to the alternative space to safe cpu time.
@@ -110,10 +110,22 @@ public class ICCBased extends PColorSpace {
     }
 
     private static int generateKey(float[] f) {
-        int key = (((int) (f[0] * 255) & 0xff) << 16) |
-                (((int) (f[1] * 255) & 0xff) << 8) |
-                (((int) (f[2] * 255) & 0xff) & 0xff);
-        if (f.length == 4) key |= (((int) (f[3] * 255) & 0xff) << 24);
+        int key = 0;
+        if (f.length == 1) {
+            key = ((int) (f[0] * 255) & 0xff);
+        } else if (f.length == 2) {
+            key = (((int) (f[0] * 255) & 0xff) << 8) |
+                    (((int) (f[1] * 255) & 0xff) & 0xff);
+        } else if (f.length == 3) {
+            key = (((int) (f[0] * 255) & 0xff) << 16) |
+                    (((int) (f[1] * 255) & 0xff) << 8) |
+                    (((int) (f[2] * 255) & 0xff) & 0xff);
+        } else if (f.length == 4) {
+            key = (((int) (f[0] * 255) & 0xff) << 24) |
+                    (((int) (f[1] * 255) & 0xff) << 16) |
+                    (((int) (f[2] * 255) & 0xff) << 8) |
+                    (((int) (f[3] * 255) & 0xff) & 0xff);
+        }
         return key;
     }
 

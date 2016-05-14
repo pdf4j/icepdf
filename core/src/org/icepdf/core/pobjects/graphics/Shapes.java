@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2014 ICEsoft Technologies Inc.
+ * Copyright 2006-2016 ICEsoft Technologies Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -17,6 +17,7 @@ package org.icepdf.core.pobjects.graphics;
 
 import org.icepdf.core.pobjects.Page;
 import org.icepdf.core.pobjects.graphics.commands.DrawCmd;
+import org.icepdf.core.pobjects.graphics.commands.FormDrawCmd;
 import org.icepdf.core.pobjects.graphics.commands.ImageDrawCmd;
 import org.icepdf.core.pobjects.graphics.commands.ShapesDrawCmd;
 import org.icepdf.core.pobjects.graphics.text.PageText;
@@ -58,7 +59,6 @@ public class Shapes {
     // stack already has the needed state,  more ops take longer to paint.
     private int rule;
     private float alpha;
-
     private boolean interrupted;
 
     // Graphics stack for a page's content.
@@ -102,8 +102,13 @@ public class Shapes {
         parentPage = parent;
     }
 
-    public void add(DrawCmd drawCmd) {
-        shapes.add(drawCmd);
+    public void add(DrawCmd drawCmd){
+
+        if (!(drawCmd instanceof FormDrawCmd)){
+            shapes.add(drawCmd);
+        }else{
+            shapes.add(drawCmd);
+        }
     }
 
     public boolean isPaintAlpha() {
@@ -132,9 +137,10 @@ public class Shapes {
             DrawCmd nextShape;
             // for loops actually faster in this case.
             for (int i = 0, max = shapes.size(); i < max; i++) {
-
-                if (interrupted) {
+                // try and minimize interrupted checks, costly.
+                if (interrupted || (i % 1000 == 0 && Thread.currentThread().isInterrupted())) {
                     interrupted = false;
+                    logger.log(Level.FINE, "Page painting interrupted");
                     break;
                 }
 

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  ~ Copyright 2006-2014 ICEsoft Technologies Inc.
+  ~ Copyright 2006-2016 ICEsoft Technologies Inc.
   ~
   ~ Licensed under the Apache License, Version 2.0 (the "License");
   ~ you may not use this file except in compliance with the
@@ -21,7 +21,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>org.icepdf.os</groupId>
     <artifactId>icepdf-core</artifactId>
-    <version>5.1.0</version>
+    <version>6.1.1</version>
     <packaging>jar</packaging>
     <name>ICEpdf Core</name>
     <url>http://www.icepdf.org</url>
@@ -36,22 +36,48 @@
 
     <dependencies>
 
+        <!-- Bouncy castle is need for building the core bundles as well as digital signature support -->
         <dependency>
-            <groupId>com.sun.media</groupId>
-            <artifactId>jai-codec</artifactId>
-            <version>1.1.3</version>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcprov-jdk15on</artifactId>
+            <version>1.54</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcprov-ext-jdk15on</artifactId>
+            <version>1.54</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcpkix-jdk15on</artifactId>
+            <version>1.54</version>
         </dependency>
 
         <!--
-            JAI imageIO is not redistributable but need for JPEG2000 support
-            Can be downloaded here:
-                http://download.java.net/media/jai-imageio/builds/release/1.1/
-        -->
-        <!--<dependency>-->
-        <!--<groupId>com.sun.media</groupId>-->
-        <!--<artifactId>jai_imageio</artifactId>-->
-        <!--<version>1.1</version>-->
-        <!--</dependency>-->
+           JAI imageIO is not redistributable but need for JPEG2000 support
+           Can be downloaded here:
+               http://download.java.net/media/jai-imageio/builds/release/1.1/
+       -->
+        <dependency>
+            <groupId>javax.media</groupId>
+            <artifactId>jai-core</artifactId>
+            <version>1.1.3</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.sun.media</groupId>
+            <artifactId>jai_imageio</artifactId>
+            <version>1.1</version>
+            <type>pom</type>
+            <exclusions>
+                <exclusion>
+                    <groupId>javax.media</groupId>
+                    <artifactId>jai_core</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
     </dependencies>
 
 </project>

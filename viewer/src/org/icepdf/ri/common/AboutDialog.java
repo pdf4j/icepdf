@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2014 ICEsoft Technologies Inc.
+ * Copyright 2006-2016 ICEsoft Technologies Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -27,7 +27,7 @@ import java.awt.event.WindowListener;
 import java.util.ResourceBundle;
 
 @SuppressWarnings("serial")
-public class AboutDialog extends JDialog implements ActionListener, WindowListener {
+public class AboutDialog extends EscapeJDialog implements ActionListener, WindowListener {
 
 
     private JButton ok;
@@ -39,7 +39,6 @@ public class AboutDialog extends JDialog implements ActionListener, WindowListen
 
     public static final int NO_BUTTONS = 0;
     public static final int OK = 2;
-
     public static final int NO_TIMER = 0;
     public static final int DISAPPEAR = 4;
 

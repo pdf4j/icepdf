@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2014 ICEsoft Technologies Inc.
+ * Copyright 2006-2016 ICEsoft Technologies Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -16,6 +16,7 @@
 package org.icepdf.core.pobjects.graphics;
 
 import org.icepdf.core.pobjects.ImageStream;
+import org.icepdf.core.pobjects.ImageUtility;
 import org.icepdf.core.pobjects.Page;
 import org.icepdf.core.pobjects.Resources;
 import org.icepdf.core.util.Defs;
@@ -62,10 +63,10 @@ public class SmoothScaledImageReference extends CachedImageReference {
     private int width;
     private int height;
 
-    protected SmoothScaledImageReference(ImageStream imageStream, Color fillColor,
+    protected SmoothScaledImageReference(ImageStream imageStream, GraphicsState graphicsState,
                                          Resources resources, int imageIndex,
                                          Page page) {
-        super(imageStream, fillColor, resources, imageIndex, page);
+        super(imageStream, graphicsState, resources, imageIndex, page);
 
         // get eh original image width.
         width = imageStream.getWidth();
@@ -95,7 +96,7 @@ public class SmoothScaledImageReference extends CachedImageReference {
         try {
             // get the stream image if need, otherwise scale what you have.
             if (image == null) {
-                image = imageStream.getImage(fillColor, resources);
+                image = imageStream.getImage(graphicsState, resources);
                 if (width > maxImageWidth || height > maxImageHeight) {
                     return image;
                 }
@@ -248,7 +249,6 @@ public class SmoothScaledImageReference extends CachedImageReference {
         g2.dispose();
     }
 
-
     /**
      * Utility to apply image scaling using the g2.drawImage() method.
      */
@@ -256,7 +256,7 @@ public class SmoothScaledImageReference extends CachedImageReference {
                                             int type,
                                             Object hint,
                                             int w, int h) {
-        BufferedImage tmp = new BufferedImage(w, h, type);
+        BufferedImage tmp = ImageUtility.createTranslucentCompatibleImage(w, h);
         Graphics2D g2 = tmp.createGraphics();
         g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, hint);
         g2.drawImage(orig, 0, 0, w, h, null);

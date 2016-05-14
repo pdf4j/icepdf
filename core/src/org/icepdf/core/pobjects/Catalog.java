@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2014 ICEsoft Technologies Inc.
+ * Copyright 2006-2016 ICEsoft Technologies Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -15,6 +15,7 @@
  */
 package org.icepdf.core.pobjects;
 
+import org.icepdf.core.pobjects.acroform.InteractiveForm;
 import org.icepdf.core.util.Library;
 
 import java.util.ArrayList;
@@ -54,14 +55,18 @@ public class Catalog extends Dictionary {
     public static final Name PAGES_KEY = new Name("Pages");
     public static final Name PAGELAYOUT_KEY = new Name("PageLayout");
     public static final Name PAGEMODE_KEY = new Name("PageMode");
+    public static final Name ACRO_FORM_KEY = new Name("AcroForm");
     public static final Name COLLECTION_KEY = new Name("Collection");
+    public static final Name METADATA_KEY = new Name("Metadata");
+    public static final Name PERMS_KEY = new Name("Perms");
 
     private PageTree pageTree;
     private Outlines outlines;
     private Names names;
     private OptionalContent optionalContent;
-    private Dictionary dests;
+    private NamedDestinations dests;
     private ViewerPreferences viewerPref;
+    private InteractiveForm interactiveForm;
 
     private boolean outlinesInited = false;
     private boolean namesTreeInited = false;
@@ -122,6 +127,15 @@ public class Catalog extends Dictionary {
             names = new Names(library, (HashMap) tmp);
             names.init();
         }
+
+        // load the Acroform data.
+        tmp = library.getObject(entries, ACRO_FORM_KEY);
+        if (tmp instanceof HashMap) {
+            interactiveForm = new InteractiveForm(library, (HashMap) tmp);
+            interactiveForm.init();
+        }
+        // todo namesTree contains forms javascript, might need to be initialized here
+
     }
 
     /**
@@ -170,13 +184,12 @@ public class Catalog extends Dictionary {
      * @return A Dictionary of Destinations; if none, null is returned.
      */
     @SuppressWarnings("unchecked")
-    public Dictionary getDestinations() {
+    public NamedDestinations getDestinations() {
         if (!destsInited) {
             destsInited = true;
             Object o = library.getObject(entries, DESTS_KEY);
             if (o != null) {
-                dests = new Dictionary(library, (HashMap<Object, Object>) o);
-                dests.init();
+                dests = new NamedDestinations(library, (HashMap<Object, Object>) o);
             }
         }
         return dests;
@@ -219,6 +232,44 @@ public class Catalog extends Dictionary {
             }
         }
         return optionalContent;
+    }
+
+    /**
+     * A metadata stream that shall contain metadata for the document.  To
+     * access the metadata stream data make a call to getMetData().getDecodedStreamBytes()
+     * which can be used to create a String or open an InputStream.
+     *
+     * @return metadata stream if define,  otherwise null.
+     */
+    public Stream getMetaData() {
+        Object o = library.getObject(entries, METADATA_KEY);
+        if (o != null && o instanceof Stream) {
+            return (Stream) o;
+        }
+        return null;
+    }
+
+    /**
+     * Gets the permissions of the catalog if present. Perms key.
+     *
+     * @return permissions if present, otherwise false.
+     */
+    public Permissions getPermissions() {
+        HashMap hashMap = library.getDictionary(entries, PERMS_KEY);
+        if (hashMap != null) {
+            return new Permissions(library, hashMap);
+        } else {
+            return null;
+        }
+    }
+
+    /**
+     * Gets the interactive form object that contains the form widgets for the given PDF.
+     *
+     * @return interactive form object,  null if no forms are pressent.
+     */
+    public InteractiveForm getInteractiveForm() {
+        return interactiveForm;
     }
 
     /**

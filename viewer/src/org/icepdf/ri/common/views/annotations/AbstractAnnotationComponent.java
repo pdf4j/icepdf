@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2014 ICEsoft Technologies Inc.
+ * Copyright 2006-2016 ICEsoft Technologies Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -16,14 +16,21 @@
 package org.icepdf.ri.common.views.annotations;
 
 import org.icepdf.core.pobjects.Document;
+import org.icepdf.core.pobjects.Name;
 import org.icepdf.core.pobjects.Page;
+import org.icepdf.core.pobjects.acroform.AdditionalActionsDictionary;
+import org.icepdf.core.pobjects.acroform.FieldDictionary;
+import org.icepdf.core.pobjects.actions.Action;
+import org.icepdf.core.pobjects.annotations.AbstractWidgetAnnotation;
 import org.icepdf.core.pobjects.annotations.Annotation;
+import org.icepdf.core.pobjects.annotations.Appearance;
 import org.icepdf.core.util.ColorUtil;
 import org.icepdf.core.util.Defs;
 import org.icepdf.core.util.PropertyConstants;
 import org.icepdf.ri.common.views.*;
 
 import javax.swing.*;
+import javax.swing.border.Border;
 import javax.swing.event.MouseInputListener;
 import java.awt.*;
 import java.awt.event.FocusEvent;
@@ -50,7 +57,6 @@ public abstract class AbstractAnnotationComponent extends JComponent implements 
 
     protected static final Logger logger =
             Logger.getLogger(AbstractAnnotationComponent.class.toString());
-
     protected static boolean isInteractiveAnnotationsEnabled;
     protected static Color annotationHighlightColor;
     protected static float annotationHighlightAlpha;
@@ -172,7 +178,10 @@ public abstract class AbstractAnnotationComponent extends JComponent implements 
         currentRotation = documentViewModel.getViewRotation();
         currentZoom = documentViewModel.getViewZoom();
         resizableBorder.setZoom(currentZoom);
+
     }
+
+    public abstract boolean isActive();
 
     public Document getDocument() {
         return documentViewModel.getDocument();
@@ -200,14 +209,25 @@ public abstract class AbstractAnnotationComponent extends JComponent implements 
     }
 
     public void focusGained(FocusEvent e) {
-        repaint();
         isSelected = true;
+
+        // on mouse enter pass event to annotation callback if we are in normal viewing
+        // mode. A and AA dictionaries are taken into consideration.
+        additionalActionsHandler(AdditionalActionsDictionary.ANNOTATION_FO_KEY, null);
+
+        repaint();
     }
 
     public void focusLost(FocusEvent e) {
-        repaint();
+
         // if we've lost focus then drop the selected state
         isSelected = false;
+
+        // on mouse enter pass event to annotation callback if we are in normal viewing
+        // mode. A and AA dictionaries are taken into consideration.
+        additionalActionsHandler(AdditionalActionsDictionary.ANNOTATION_Bl_KEY, null);
+
+        repaint();
     }
 
     protected void resize() {
@@ -288,7 +308,7 @@ public abstract class AbstractAnnotationComponent extends JComponent implements 
         if (resized) {
             refreshAnnotationRect();
             if (getParent() != null) {
-                getParent().validate();
+//                getParent().validate();
                 getParent().repaint();
             }
             resized = false;
@@ -307,8 +327,10 @@ public abstract class AbstractAnnotationComponent extends JComponent implements 
 
         if (toolMode == DocumentViewModel.DISPLAY_TOOL_SELECTION &&
                 !(annotation.getFlagLocked() || annotation.getFlagReadOnly())) {
-            ResizableBorder border = (ResizableBorder) getBorder();
-            setCursor(Cursor.getPredefinedCursor(border.getCursor(me)));
+            Border border = getBorder();
+            if (border instanceof ResizableBorder) {
+                setCursor(Cursor.getPredefinedCursor(((ResizableBorder) border).getCursor(me)));
+            }
         } else {
             // set cursor back to the hand cursor.
             setCursor(documentViewController.getViewCursor(
@@ -324,6 +346,14 @@ public abstract class AbstractAnnotationComponent extends JComponent implements 
     }
 
     public void mouseExited(MouseEvent mouseEvent) {
+
+        // set selected appearance state
+        annotation.setCurrentAppearance(Annotation.APPEARANCE_STREAM_NORMAL_KEY);
+
+        // on exit pass event to annotation callback if we are in normal viewing
+        // mode. A and AA dictionaries are taken into consideration.
+        additionalActionsHandler(AdditionalActionsDictionary.ANNOTATION_X_KEY, mouseEvent);
+
         setCursor(Cursor.getDefaultCursor());
         isRollover = false;
         repaint();
@@ -332,24 +362,27 @@ public abstract class AbstractAnnotationComponent extends JComponent implements 
     public void mouseClicked(MouseEvent e) {
         // clear the selection.
         requestFocus();
-        // on click pass event to annotation callback if we are in normal viewing
-        // mode.
-        if (!(AbstractPageViewComponent.isAnnotationTool(
-                documentViewModel.getViewToolMode())) &&
-                isInteractiveAnnotationsEnabled) {
 
-            if (documentViewController.getAnnotationCallback() != null) {
-                documentViewController.getAnnotationCallback()
-                        .processAnnotationAction(annotation);
-            }
-        }
     }
 
     public void mouseEntered(MouseEvent e) {
+        // reset the appearance steam
+        Appearance hover = annotation.getAppearances().get(Annotation.APPEARANCE_STREAM_ROLLOVER_KEY);
+        if (hover != null && hover.hasAlternativeAppearance()) {
+            // set selected appearance state
+            hover.setSelectedName(hover.getOnName());
+            annotation.setCurrentAppearance(Annotation.APPEARANCE_STREAM_ROLLOVER_KEY);
+        }
+
         // set border highlight when mouse over.
         isRollover = (documentViewModel.getViewToolMode() ==
                 DocumentViewModel.DISPLAY_TOOL_SELECTION ||
                 (this instanceof PopupAnnotationComponent));
+
+        // on mouse enter pass event to annotation callback if we are in normal viewing
+        // mode. A and AA dictionaries are taken into consideration.
+        //additionalActionsHandler(AdditionalActionsDictionary.ANNOTATION_E_KEY, e);
+
         repaint();
     }
 
@@ -357,8 +390,26 @@ public abstract class AbstractAnnotationComponent extends JComponent implements 
         // setup visual effect when the mouse button is pressed or held down
         // inside the active area of the annotation.
         isMousePressed = true;
-        startOfMousePress = e.getPoint();
-        endOfMousePress = e.getPoint();
+        int x = 0, y = 0;
+        Point point = new Point();
+        if (e != null){
+            x = e.getX();
+            y = e.getY();
+            point = e.getPoint();
+        }
+        startOfMousePress = point;
+        endOfMousePress = new Point(point); // need clone not a copy...
+
+        // check if there is a mouse down state
+        Appearance down = annotation.getAppearances().get(Annotation.APPEARANCE_STREAM_DOWN_KEY);
+        if (down != null && down.hasAlternativeAppearance()) {
+            if (down.getSelectedName().equals(down.getOnName())) {
+                down.setSelectedName(down.getOffName());
+            } else {
+                down.setSelectedName(down.getOnName());
+            }
+            annotation.setCurrentAppearance(Annotation.APPEARANCE_STREAM_DOWN_KEY);
+        }
 
         if (documentViewModel.getViewToolMode() ==
                 DocumentViewModel.DISPLAY_TOOL_SELECTION &&
@@ -366,12 +417,62 @@ public abstract class AbstractAnnotationComponent extends JComponent implements 
                 !annotation.getFlagReadOnly()) {
             initiateMouseMoved(e);
         }
+
+        // on mouse pressed event to annotation callback if we are in normal viewing
+        // mode. A and AA dictionaries are taken into consideration.
+        boolean actionFired = additionalActionsHandler(AdditionalActionsDictionary.ANNOTATION_D_KEY, e);
+
+        // fire the main action associated with the
+        if (!actionFired && !(AbstractPageViewComponent.isAnnotationTool(
+                documentViewModel.getViewToolMode())) &&
+                isInteractiveAnnotationsEnabled) {
+            if (documentViewController.getAnnotationCallback() != null) {
+                // get the A and AA entries.
+                Action action = annotation.getAction();
+                documentViewController.getAnnotationCallback()
+                        .processAnnotationAction(annotation, action, x, y);
+            }
+        }
         repaint();
     }
 
+    protected boolean additionalActionsHandler(Name additionalActionKey, MouseEvent e) {
+        if (!(AbstractPageViewComponent.isAnnotationTool(
+                documentViewModel.getViewToolMode())) &&
+                isInteractiveAnnotationsEnabled) {
+            if (documentViewController.getAnnotationCallback() != null) {
+                int x = -1, y = -1;
+                if (e != null) {
+                    x = e.getX();
+                    y = e.getY();
+                }
+                // get the A and AA entries.
+                if (annotation instanceof AbstractWidgetAnnotation) {
+                    AbstractWidgetAnnotation widgetAnnotation = (AbstractWidgetAnnotation) annotation;
+                    FieldDictionary fieldDictionary = (FieldDictionary) widgetAnnotation.getFieldDictionary();
+                    if (fieldDictionary != null) {
+                        AdditionalActionsDictionary additionalActionsDictionary =
+                                fieldDictionary.getAdditionalActionsDictionary();
+                        if (additionalActionsDictionary != null &&
+                                additionalActionsDictionary.isAnnotationValue(additionalActionKey)) {
+                            documentViewController.getAnnotationCallback()
+                                    .processAnnotationAction(annotation,
+                                            additionalActionsDictionary.getAction(additionalActionKey),
+                                            x, y);
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
     protected void initiateMouseMoved(MouseEvent e) {
-        ResizableBorder border = (ResizableBorder) getBorder();
-        cursor = border.getCursor(e);
+        Border border = getBorder();
+        if (border != null && border instanceof ResizableBorder) {
+            cursor = ((ResizableBorder) border).getCursor(e);
+        }
         startPos = e.getPoint();
         previousAnnotationState = new AnnotationState(this);
         // mark annotation as selected.
@@ -483,6 +584,18 @@ public abstract class AbstractAnnotationComponent extends JComponent implements 
         startPos = null;
         isMousePressed = false;
 
+        // reset the appearance steam
+        Appearance down = annotation.getAppearances().get(Annotation.APPEARANCE_STREAM_DOWN_KEY);
+        if (down != null && down.hasAlternativeAppearance()) {
+            if (down.getSelectedName().equals(down.getOnName())) {
+                down.setSelectedName(down.getOffName());
+            } else {
+                down.setSelectedName(down.getOnName());
+            }
+        }
+        // set selected appearance state
+        annotation.setCurrentAppearance(Annotation.APPEARANCE_STREAM_NORMAL_KEY);
+
         // check to see if a move/resize occurred and if so we add the
         // state change to the memento in document view.
         if (wasResized) {
@@ -506,8 +619,20 @@ public abstract class AbstractAnnotationComponent extends JComponent implements 
             documentViewController.firePropertyChange(
                     PropertyConstants.ANNOTATION_BOUNDS,
                     previousAnnotationState, new AnnotationState(this));
+
+            // notify the annotation callback of the annotation resize.
+            if (documentViewController.getAnnotationCallback() != null) {
+                documentViewController.getAnnotationCallback()
+                        .updateAnnotation(this);
+            }
         }
+
+        // on mouse released event to annotation callback if we are in normal viewing
+        // mode. A and AA dictionaries are taken into consideration.
+        additionalActionsHandler(AdditionalActionsDictionary.ANNOTATION_U_KEY, mouseEvent);
+
         repaint();
+
     }
 
     /**
@@ -551,7 +676,6 @@ public abstract class AbstractAnnotationComponent extends JComponent implements 
         }
         return at;
     }
-
 
     /**
      * Is the annotation editable

@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2014 ICEsoft Technologies Inc.
+ * Copyright 2006-2016 ICEsoft Technologies Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -38,41 +38,23 @@ public class FontDescriptor extends Dictionary {
     private FontFile font;
 
     public static final Name TYPE = new Name("FontDescriptor");
-
     public static final Name FONT_NAME = new Name("FontName");
-
     public static final Name FONT_FAMILY = new Name("FontFamily");
-
     public static final Name MISSING_Stretch = new Name("FontStretch");
-
     public static final Name FONT_WEIGHT = new Name("FontWeight");
-
     public static final Name FLAGS = new Name("Flags");
-
     public static final Name FONT_BBOX = new Name("FontBBox");
-
     public static final Name ITALIC_ANGLE = new Name("ItalicAngle");
-
     public static final Name ASCENT = new Name("Ascent");
-
     public static final Name DESCENT = new Name("Descent");
-
     public static final Name LEADING = new Name("Leading");
-
     public static final Name CAP_HEIGHT = new Name("CapHeight");
-
     public static final Name X_HEIGHT = new Name("XHeight");
-
     public static final Name STEM_V = new Name("StemV");
-
     public static final Name STEM_H = new Name("StemH");
-
     public static final Name AVG_WIDTH = new Name("AvgWidth");
-
     public static final Name MAX_WIDTH = new Name("MaxWidth");
-
     public static final Name MISSING_WIDTH = new Name("MissingWidth");
-
     public static final Name FONT_FILE = new Name("FontFile");
     public static final Name FONT_FILE_2 = new Name("FontFile2");
     public static final Name FONT_FILE_3 = new Name("FontFile3");
@@ -286,7 +268,7 @@ public class FontDescriptor extends Dictionary {
                 Stream fontStream = (Stream) library.getObject(entries, FONT_FILE);
                 if (fontStream != null) {
                     font = fontFactory.createFontFile(
-                            fontStream, FontFactory.FONT_TYPE_1);
+                            fontStream, FontFactory.FONT_TYPE_1, null);
                 }
             }
 
@@ -294,7 +276,7 @@ public class FontDescriptor extends Dictionary {
                 Stream fontStream = (Stream) library.getObject(entries, FONT_FILE_2);
                 if (fontStream != null) {
                     font = fontFactory.createFontFile(
-                            fontStream, FontFactory.FONT_TRUE_TYPE);
+                            fontStream, FontFactory.FONT_TRUE_TYPE, null);
                 }
             }
 
@@ -308,12 +290,12 @@ public class FontDescriptor extends Dictionary {
                                 subType.equals(FONT_FILE_3_CID_FONT_TYPE_0C))
                         ) {
                     font = fontFactory.createFontFile(
-                            fontStream, FontFactory.FONT_TYPE_1);
+                            fontStream, FontFactory.FONT_TYPE_1, subType.getName());
                 }
                 if (subType != null && subType.equals(FONT_FILE_3_OPEN_TYPE)) {
 //                        font = new NFontOpenType(fontStreamBytes);
                     font = fontFactory.createFontFile(
-                            fontStream, FontFactory.FONT_OPEN_TYPE);
+                            fontStream, FontFactory.FONT_OPEN_TYPE, subType.getName());
                 }
             }
         }

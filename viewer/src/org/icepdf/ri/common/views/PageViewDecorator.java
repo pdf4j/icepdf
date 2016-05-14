@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2014 ICEsoft Technologies Inc.
+ * Copyright 2006-2016 ICEsoft Technologies Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -58,7 +58,6 @@ public class PageViewDecorator extends JComponent {
     private static Color pageBorderColor;
     private static Color pageShadowColor;
     private static Color pageColor;
-
     static {
         // sets the shadow colour of the decorator.
         try {

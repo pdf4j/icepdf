@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2014 ICEsoft Technologies Inc.
+ * Copyright 2006-2016 ICEsoft Technologies Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -379,7 +379,7 @@ public class Utils {
      */
     public static String convertStringObject(Library library, StringObject stringObject) {
         String convertedStringObject = null;
-        String titleText = stringObject.getDecryptedLiteralString(library.securityManager);
+        String titleText = stringObject.getDecryptedLiteralString(library.getSecurityManager());
         // If the title begins with 254 and 255 we are working with
         // Octal encoded strings. Check first to make sure that the
         // title string is not null, or is at least of length 2.
@@ -392,10 +392,10 @@ public class Utils {
             // convert teh unicode to characters.
             for (int i = 2; i < titleText.length(); i += 2) {
                 try {
-                    int b1 = ((int) titleText.charAt(i)) & 0xFF;
-                    int b2 = ((int) titleText.charAt(i + 1)) & 0xFF;
+                    int b1 = ((((int) titleText.charAt(i)) & 0xFF)  << 8 ) |
+                            ((int) titleText.charAt(i + 1)) & 0xFF;
                     //System.err.println(b1 + " " + b2);
-                    sb1.append((char) (b1 * 256 + b2));
+                    sb1.append((char) (b1));
                 } catch (Exception ex) {
                     // intentionally left blank.
                 }
@@ -405,7 +405,8 @@ public class Utils {
             StringBuilder sb = new StringBuilder();
             Encoding enc = Encoding.getPDFDoc();
             for (int i = 0; i < titleText.length(); i++) {
-                sb.append(enc.get(titleText.charAt(i)));
+                sb.append(titleText.charAt(i));
+//                sb.append(enc.get(titleText.charAt(i)));
             }
             convertedStringObject = sb.toString();
         }

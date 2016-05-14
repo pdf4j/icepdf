@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2014 ICEsoft Technologies Inc.
+ * Copyright 2006-2016 ICEsoft Technologies Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -21,6 +21,7 @@ import org.icepdf.ri.common.utility.annotation.AnnotationPanel;
 import org.icepdf.ri.common.utility.layers.LayersPanel;
 import org.icepdf.ri.common.utility.outline.OutlinesTree;
 import org.icepdf.ri.common.utility.search.SearchPanel;
+import org.icepdf.ri.common.utility.signatures.SignaturesPanel;
 import org.icepdf.ri.common.utility.thumbs.ThumbnailsPanel;
 import org.icepdf.ri.common.views.DocumentViewController;
 import org.icepdf.ri.common.views.DocumentViewControllerImpl;
@@ -315,7 +316,6 @@ public class SwingViewBuilder {
 
     public static final int TOOL_BAR_STYLE_FLOATING = 1;
     public static final int TOOL_BAR_STYLE_FIXED = 2;
-
     protected static final float[] DEFAULT_ZOOM_LEVELS = {
             0.05f, 0.10f, 0.25f, 0.50f, 0.75f,
             1.0f, 1.5f, 2.0f, 3.0f,
@@ -329,9 +329,7 @@ public class SwingViewBuilder {
     protected boolean haveMadeAToolBar;
     protected int documentViewType;
     protected int documentPageFitMode;
-
     protected ResourceBundle messageBundle;
-
     protected PropertiesManager propertiesManager;
 
     public static boolean isMacOs;
@@ -1107,6 +1105,8 @@ public class SwingViewBuilder {
             addToToolBar(toolbar, buildToolToolBar());
         if (PropertiesManager.checkAndStoreBooleanProperty(propertiesManager, PropertiesManager.PROPERTY_SHOW_TOOLBAR_ANNOTATION))
             addToToolBar(toolbar, buildAnnotationlToolBar());
+        if (PropertiesManager.checkAndStoreBooleanProperty(propertiesManager, PropertiesManager.PROPERTY_SHOW_TOOLBAR_FORMS))
+            addToToolBar(toolbar, buildFormsToolBar());
 
         // we only add the configurable font engin in the demo version
         if (isDemo) {
@@ -1427,6 +1427,13 @@ public class SwingViewBuilder {
         return toolbar;
     }
 
+    public JToolBar buildFormsToolBar() {
+        JToolBar toolbar = new JToolBar();
+        commonToolBarSetup(toolbar, false);
+        addToToolBar(toolbar, buildFormHighlightButton(Images.SIZE_LARGE));
+        return toolbar;
+    }
+
     public JToolBar buildAnnotationUtilityToolBar() {
         JToolBar toolbar = new JToolBar();
         commonToolBarSetup(toolbar, true);
@@ -1601,6 +1608,16 @@ public class SwingViewBuilder {
         return btn;
     }
 
+    public JToggleButton buildFormHighlightButton(final String imageSize) {
+        JToggleButton btn = makeToolbarToggleButton(
+                messageBundle.getString("viewer.toolbar.tool.forms.highlight.label"),
+                messageBundle.getString("viewer.toolbar.tool.forms.highlight.tooltip"),
+                "form_highlight", Images.SIZE_LARGE, buttonFont);
+        if (viewerController != null && btn != null)
+            viewerController.setFormHighlightButton(btn);
+        return btn;
+    }
+
     public JToggleButton buildTextAnnotationUtilityToolButton(final String imageSize) {
         JToggleButton btn = makeToolbarToggleButtonSmall(
                 messageBundle.getString("viewer.toolbar.tool.textAnno.label"),
@@ -1699,6 +1716,12 @@ public class SwingViewBuilder {
                     buildLayersComponents());
         }
         if (PropertiesManager.checkAndStoreBooleanProperty(propertiesManager,
+                PropertiesManager.PROPERTY_SHOW_UTILITYPANE_SIGNATURES)) {
+            utilityTabbedPane.add(
+                    messageBundle.getString("viewer.utilityPane.signatures.tab.title"),
+                    buildSignatureComponents());
+        }
+        if (PropertiesManager.checkAndStoreBooleanProperty(propertiesManager,
                 PropertiesManager.PROPERTY_SHOW_UTILITYPANE_ANNOTATION)) {
             utilityTabbedPane.add(
                     messageBundle.getString("viewer.utilityPane.annotation.tab.title"),
@@ -1740,6 +1763,14 @@ public class SwingViewBuilder {
             viewerController.setLayersPanel(layersPanel);
         }
         return layersPanel;
+    }
+
+    public JComponent buildSignatureComponents() {
+        SignaturesPanel signaturesPanel = new SignaturesPanel(viewerController);
+        if (viewerController != null) {
+            viewerController.setSignaturesPanel(signaturesPanel);
+        }
+        return signaturesPanel;
     }
 
     public SearchPanel buildSearchPanel() {

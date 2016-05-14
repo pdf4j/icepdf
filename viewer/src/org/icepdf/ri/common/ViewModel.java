@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2014 ICEsoft Technologies Inc.
+ * Copyright 2006-2016 ICEsoft Technologies Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -41,6 +41,8 @@ public class ViewModel {
     private int printCopies = 1;
 
     private PrintHelper printHelper;
+
+    private boolean isWidgetAnnotationHighlight;
 
     static File getDefaultFile() {
         return defaultFile;
@@ -121,5 +123,22 @@ public class ViewModel {
      */
     public void setPrintCopies(int printCopies) {
         this.printCopies = printCopies;
+    }
+
+    /**
+     * Indicates that widget highlighting is enabled.
+     * @return true if enabled, otherwise false.
+     */
+    public boolean isWidgetAnnotationHighlight() {
+        return isWidgetAnnotationHighlight;
+    }
+
+    /**
+     * Sets the value of widgetAnnotation highlight model.
+     *
+     * @param isWidgetAnnotationHighlight true to enable highlight, otherwise false.
+     */
+    public void setIsWidgetAnnotationHighlight(boolean isWidgetAnnotationHighlight) {
+        this.isWidgetAnnotationHighlight = isWidgetAnnotationHighlight;
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2014 ICEsoft Technologies Inc.
+ * Copyright 2006-2016 ICEsoft Technologies Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -195,6 +195,11 @@ public class Font extends org.icepdf.core.pobjects.fonts.Font {
 
         // strip font name clean ready for processing
         basefont = cleanFontName(basefont);
+
+        // on a null type default to Type1
+        if (subtype == null) {
+            subtype = new Name("Type1");
+        }
 
         // This should help with figuring out special symbols
         if (subtype.equals("Type3")) {
@@ -656,10 +661,10 @@ public class Font extends org.icepdf.core.pobjects.fonts.Font {
         fontName = FontUtil.removeBaseFontSubset(fontName);
 
         // strip commas from basefont name and replace with dashes
-        if (subtype.equals("Type0")
+        if (subtype != null && (subtype.equals("Type0")
                 || subtype.equals("Type1")
                 || subtype.equals("MMType1")
-                || subtype.equals("TrueType")) {
+                || subtype.equals("TrueType"))) {
             if (fontName != null) {
                 // normalize so that java.awt.decode will work correctly
                 fontName = fontName.replace(',', '-');

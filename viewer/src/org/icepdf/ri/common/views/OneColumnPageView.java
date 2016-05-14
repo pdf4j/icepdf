@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2014 ICEsoft Technologies Inc.
+ * Copyright 2006-2016 ICEsoft Technologies Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -49,7 +49,7 @@ public class OneColumnPageView extends AbstractDocumentView {
 
     public OneColumnPageView(DocumentViewController documentDocumentViewController,
                              JScrollPane documentScrollpane,
-                             DocumentViewModelImpl documentViewModel) {
+                             DocumentViewModel documentViewModel) {
 
         super(documentDocumentViewController, documentScrollpane, documentViewModel);
 

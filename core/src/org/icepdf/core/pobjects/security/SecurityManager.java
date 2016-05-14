@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2014 ICEsoft Technologies Inc.
+ * Copyright 2006-2016 ICEsoft Technologies Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -63,7 +63,6 @@ public class SecurityManager {
 
     // flag for detecting JCE
     private static boolean foundJCE = false;
-
     // Add security provider of choice before Sun RSA provider (if any)
     static {
         // Load security handler from system property if possible

@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2014 ICEsoft Technologies Inc.
+ * Copyright 2006-2016 ICEsoft Technologies Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -15,15 +15,13 @@
  */
 package org.icepdf.ri.common;
 
-import org.icepdf.core.pobjects.Document;
-import org.icepdf.core.pobjects.Page;
-import org.icepdf.core.pobjects.PageTree;
-import org.icepdf.core.pobjects.Reference;
+import org.icepdf.core.pobjects.*;
 import org.icepdf.core.pobjects.actions.*;
 import org.icepdf.core.pobjects.annotations.Annotation;
 import org.icepdf.core.pobjects.annotations.LinkAnnotation;
 import org.icepdf.core.pobjects.annotations.MarkupAnnotation;
 import org.icepdf.ri.common.views.*;
+import org.icepdf.ri.common.views.annotations.AbstractAnnotationComponent;
 import org.icepdf.ri.common.views.annotations.PopupAnnotationComponent;
 import org.icepdf.ri.util.BareBonesBrowserLaunch;
 
@@ -33,7 +31,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * This class represents a basic implemenation of the AnnotationCallback
+ * This class represents a basic implementation of the AnnotationCallback
  *
  * @author ICEsoft Technologies, Inc.
  * @since 2.6
@@ -59,8 +57,12 @@ public class MyAnnotationCallback implements AnnotationCallback {
      *
      * @param annotation annotation that was activated by a user via the
      *                   PageViewComponent.
+     * @param action     the action event that was fired when the annotation was clicked.  This can be
+     *                   the A or AA entry.
+     * @param x          x-coordinate of input device click that initiated the annotation action.
+     * @param y          y-coordinate of input device click that initiated the annotation action.
      */
-    public void processAnnotationAction(Annotation annotation) {
+    public void processAnnotationAction(Annotation annotation, Action action, int x, int y) {
         if (logger.isLoggable(Level.FINE)) {
             logger.fine("Annotation " + annotation.toString());
             if (annotation.getAction() != null) {
@@ -71,9 +73,7 @@ public class MyAnnotationCallback implements AnnotationCallback {
         if (annotation instanceof LinkAnnotation) {
             LinkAnnotation linkAnnotation = (LinkAnnotation) annotation;
             // look for an A entry,
-            if (linkAnnotation.getAction() != null) {
-                Action action =
-                        linkAnnotation.getAction();
+            if (action != null) {
                 // do instance of check to process actions correctly.
                 if (action instanceof GoToAction &&
                         documentViewController != null) {
@@ -83,7 +83,7 @@ public class MyAnnotationCallback implements AnnotationCallback {
                     BareBonesBrowserLaunch.openURL(
                             ((URIAction) action).getURI());
                 } else if (action instanceof GoToRAction) {
-
+                    // process resource request
                 } else if (action instanceof LaunchAction) {
                     LaunchAction launchAction = (LaunchAction) action;
                     String file = launchAction.getExternalFile();
@@ -107,18 +107,56 @@ public class MyAnnotationCallback implements AnnotationCallback {
         // catch any other annotation types and try and process their action.
         else {
             // look for the dest entry and navigate to it.
-            if (annotation.getAction() != null) {
-                Action action = annotation.getAction();
+            if (action != null) {
                 if (action instanceof GoToAction) {
                     documentViewController.setDestinationTarget(
                             ((GoToAction) action).getDestination());
                 } else if (action instanceof URIAction) {
                     BareBonesBrowserLaunch.openURL(
                             ((URIAction) action).getURI());
+                } else if (action instanceof SubmitFormAction) {
+                    // submits form data following the submit actions.
+                    int responseCode = ((SubmitFormAction) action).executeFormAction(x, y);
+                } else if (action instanceof ResetFormAction) {
+                    // resets the form data following reset action.
+                    int responseCode = ((ResetFormAction) action).executeFormAction(x, y);
+                } else if (action instanceof JavaScriptAction) {
+                    // resets the form dat following reset actions properties
+                    JavaScriptAction javaScriptAction = (JavaScriptAction) action;
+                    if (logger.isLoggable(Level.FINE)) {
+                        logger.fine("Annotation JS: " + javaScriptAction.getJavaScript());
+                    }
+                } else if (action instanceof NamedAction) {
+                    // Named actions are key words that we should act on.
+                    NamedAction namedAction = (NamedAction) action;
+                    Name actionName = namedAction.getNamedAction();
+                    // go to the first page of the document.
+                    if (NamedAction.FIRST_PAGE_KEY.equals(actionName)) {
+                        documentViewController.setCurrentPageIndex(0);
+                    } // go to the last page of the document.
+                    else if (NamedAction.LAST_PAGE_KEY.equals(actionName)) {
+                        int numberOfPages = documentViewController.getDocument().getNumberOfPages();
+                        documentViewController.setCurrentPageIndex(numberOfPages - 1);
+                    } // next page.
+                    else if (NamedAction.NEXT_PAGE_KEY.equals(actionName)) {
+                        int currentPageNumber = documentViewController.getCurrentPageIndex();
+                        documentViewController.setCurrentPageIndex(currentPageNumber + 1);
+                    } // previous page.
+                    else if (NamedAction.PREV_PAGE_KEY.equals(actionName)) {
+                        int currentPageNumber = documentViewController.getCurrentPageIndex();
+                        documentViewController.setCurrentPageIndex(currentPageNumber - 1);
+                    } // print the current document.
+                    else if (NamedAction.PRINT_KEY.equals(actionName)) {
+                        SwingController controller = (SwingController) documentViewController.getParentController();
+                        controller.print(true);
+                    } // show save as dialog.
+                    else if (NamedAction.SAVE_AS_KEY.equals(actionName)) {
+                        SwingController controller = (SwingController) documentViewController.getParentController();
+                        controller.saveFile();
+                    }
                 }
             }
         }
-
     }
 
     /**
@@ -189,7 +227,7 @@ public class MyAnnotationCallback implements AnnotationCallback {
             if (markupAnnotation.getPopupAnnotation() != null) {
                 page.deleteAnnotation(markupAnnotation.getPopupAnnotation());
                 // find and remove the popup component
-                ArrayList<AnnotationComponent> annotationComponents =
+                ArrayList<AbstractAnnotationComponent> annotationComponents =
                         ((AbstractPageViewComponent) pageComponent).getAnnotationComponents();
                 Reference compReference;
                 Reference popupReference = markupAnnotation.getPopupAnnotation().getPObjectReference();

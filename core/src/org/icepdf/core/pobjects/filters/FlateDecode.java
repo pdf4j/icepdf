@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2014 ICEsoft Technologies Inc.
+ * Copyright 2006-2016 ICEsoft Technologies Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -144,8 +144,10 @@ public class FlateDecode extends ChunkingInputStream {
             if (numRead <= 0) return -1;
             return numRead;
         }
+
         return -1;
     }
+
 
     public String toString() {
         StringBuilder sb = new StringBuilder();

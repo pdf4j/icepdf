@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2014 ICEsoft Technologies Inc.
+ * Copyright 2006-2016 ICEsoft Technologies Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -46,7 +46,6 @@ public class CrossReference {
      * are retrieved by object number.
      */
     private HashMap<Number, Entry> hObjectNumber2Entry;
-
     /**
      * In a Linearized PDF, we don't want to load all Trailers and their XRefs
      * upfront, but would rather load the first upfront, and then lazily load
@@ -60,7 +59,6 @@ public class CrossReference {
     private PTrailer pTrailer;
     private CrossReference xrefPrevious;
     private CrossReference xrefPeer;
-
     //
     private boolean bIsCrossReferenceTable;
     private boolean bHaveTriedLoadingPrevious;

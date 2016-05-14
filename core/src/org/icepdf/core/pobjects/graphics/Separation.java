@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2014 ICEsoft Technologies Inc.
+ * Copyright 2006-2016 ICEsoft Technologies Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -110,9 +110,10 @@ public class Separation extends PColorSpace {
         // see if name can be converted to a known colour.
         if (name instanceof Name) {
             String colorName = ((Name) name).getName().toLowerCase();
-            // check for additive colours we can work ith .
+            // check for additive colours we can work with .
             if (!(colorName.equals("red") || colorName.equals("blue")
                     || colorName.equals("blue") || colorName.equals("black")
+                    || colorName.equals("cyan") || colorName.equals("brown")
                     || colorName.equals("auto"))) {
                 // sniff out All or Null
                 if (colorName.equals(COLORANT_ALL)) {
@@ -120,6 +121,7 @@ public class Separation extends PColorSpace {
                 } else if (colorName.equals(COLORANT_NONE)) {
                     isNone = true;
                 }
+                // return as we don't care about the namedColor if subtractive.
                 return;
             }
             // get colour value if any
@@ -166,7 +168,7 @@ public class Separation extends PColorSpace {
             // apply tint as an alpha value.
             float[] colour = namedColor.getComponents(null);
 //                namedColor = new Color(colour[0] * tint, colour[1] * tint, colour[2] * tint);
-            namedColor = new Color(colour[0], colour[1], colour[2], tint);
+            Color namedColor = new Color(colour[0], colour[1], colour[2], tint);
             // The color model doesn't actually have transparency, so white with an alpha of 0.
             // is still just white, not transparent.
             if (tint < 0.1f && colour[0] == 0 && colour[1] == 0 && colour[2] == 0) {

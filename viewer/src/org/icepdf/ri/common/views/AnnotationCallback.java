@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2014 ICEsoft Technologies Inc.
+ * Copyright 2006-2016 ICEsoft Technologies Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -16,6 +16,7 @@
 package org.icepdf.ri.common.views;
 
 import org.icepdf.core.pobjects.Page;
+import org.icepdf.core.pobjects.actions.Action;
 import org.icepdf.core.pobjects.annotations.Annotation;
 
 /**
@@ -35,11 +36,16 @@ public interface AnnotationCallback {
      * in a PageViewComponent it passes the annotation to this method for
      * processing.  The PageViewComponent take care of drawing the annotation
      * states but it up to this method to process the annotation.</p>
+     * <p>Form Widgets submit and reset actions are also handled by this callback.</p>
      *
      * @param annotation annotation that was activated by a user via the
      *                   PageViewComponent.
+     * @param action     the action event that was fired when the annotation was clicked.  This can be
+     *                   the A or AA entry.
+     * @param x          x-coordinate of input device click that initiated the annotation action.
+     * @param y          y-coordinate of input device click that initiated the annotation action.
      */
-    public void processAnnotationAction(Annotation annotation);
+    public void processAnnotationAction(Annotation annotation, Action action, int x, int y);
 
     /**
      * <p>Implemented Annotation Callback method.  This method is called when a

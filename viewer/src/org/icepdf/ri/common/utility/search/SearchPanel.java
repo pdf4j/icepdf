@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2014 ICEsoft Technologies Inc.
+ * Copyright 2006-2016 ICEsoft Technologies Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -57,13 +57,10 @@ public class SearchPanel extends JPanel implements ActionListener,
 
     // layouts constraint
     private GridBagConstraints constraints;
-
     // input for a search pattern
     private JTextField searchTextField;
-
     // pointer to document which will be searched
     private Document document;
-
     private SwingController controller;
 
     // tree view of the groups and panels
@@ -73,18 +70,15 @@ public class SearchPanel extends JPanel implements ActionListener,
     private JTree tree;
     private DefaultMutableTreeNode rootTreeNode;
     private DefaultTreeModel treeModel;
-
     // search start button
     private JButton searchButton;
     // clear search
     private JButton clearSearchButton;
-
     // search option check boxes.
     private JCheckBox caseSensitiveCheckbox;
     private JCheckBox wholeWordCheckbox;
     private JCheckBox cumulativeCheckbox;
     private JCheckBox showPagesCheckbox;
-
     // page index of the last added node.
     private int lastNodePageIndex;
 
@@ -104,7 +98,7 @@ public class SearchPanel extends JPanel implements ActionListener,
     private static final int ONE_SECOND = 1000;
 
     // flag indicating if search is under way.
-    private boolean isSearching = false;
+    private boolean isSearching;
 
     // message bundle for internationalization
     ResourceBundle messageBundle;
@@ -214,9 +208,7 @@ public class SearchPanel extends JPanel implements ActionListener,
         progressBar = new JProgressBar(0, 1);
         progressBar.setValue(0);
         progressBar.setVisible(false);
-        findMessage = new JLabel(
-                messageBundle.getString(
-                        "viewer.utilityPane.search.searching.msg"));
+        findMessage = new JLabel(messageBundle.getString("viewer.utilityPane.search.searching.msg"));
         findMessage.setVisible(false);
         timer = new Timer(ONE_SECOND, new TimerListener());
 
@@ -805,18 +797,6 @@ public class SearchPanel extends JPanel implements ActionListener,
 
         // The destination to be displayed when this item is activated
         int pageNumber;
-
-        /**
-         * Creates a new instance of a FindEntry.
-         *
-         * @param title of found entry
-         */
-        FindEntry(String title) {
-            super();
-            this.pageNumber = 0;
-            this.title = title;
-            setUserObject(title);
-        }
 
         /**
          * Creates a new instance of a FindEntry.

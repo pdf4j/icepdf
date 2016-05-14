@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2014 ICEsoft Technologies Inc.
+ * Copyright 2006-2016 ICEsoft Technologies Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -50,7 +50,6 @@ public class TextAnnotation extends MarkupAnnotation {
      * displayed open. Default value: false (closed).
      */
     public static final Name OPEN_KEY = new Name("Open");
-
     /**
      * Optional) The name of an icon that shall be used in displaying the annotation.
      * Conforming readers shall provide predefined icon appearances for at least
@@ -64,7 +63,6 @@ public class TextAnnotation extends MarkupAnnotation {
      * over the Name entry; see Table 168 and 12.5.5, “Appearance Streams.”
      */
     public static final Name NAME_KEY = new Name("Name");
-
     /**
      * (Optional; PDF 1.5) The state to which the original annotation shall be
      * set; see 12.5.6.3, “Annotation States.”
@@ -72,13 +70,11 @@ public class TextAnnotation extends MarkupAnnotation {
      * Default: “Unmarked” if StateModel is “Marked”; “None” if StateModel is “Review”.
      */
     public static final Name STATE_KEY = new Name("State");
-
     /**
      * (Required if State is present, otherwise optional; PDF 1.5) The state model
      * corresponding to State; see 12.5.6.3, “Annotation States.”
      */
     public static final Name STATE_MODEL_KEY = new Name("StateModel");
-
     /**
      * Named text icon times.
      */
@@ -99,13 +95,11 @@ public class TextAnnotation extends MarkupAnnotation {
     public static final Name STAR_ICON = new Name("Star");
     public static final Name UP_ARROW_ICON = new Name("UpArrow");
     public static final Name UP_LEFT_ARROW_ICON = new Name("UpLeftArrow");
-
     /**
      * State Models
      */
     public static final String STATE_MODEL_MARKED = "Marked";
     public static final String STATE_MODEL_REVIEW = "Review";
-
     /**
      * State names.
      */
@@ -121,7 +115,6 @@ public class TextAnnotation extends MarkupAnnotation {
     protected Name iconName = COMMENT_ICON;
     protected String state;
     protected String stateModel;
-
     public TextAnnotation(Library l, HashMap h) {
         super(l, h);
     }
@@ -154,6 +147,9 @@ public class TextAnnotation extends MarkupAnnotation {
         } else if (value instanceof String) {
             stateModel = (String) value;
         }
+
+        // try and generate an appearance stream.
+        resetNullAppearanceStream();
     }
 
     /**
@@ -203,8 +199,15 @@ public class TextAnnotation extends MarkupAnnotation {
      */
     public void resetAppearanceStream(double dx, double dy, AffineTransform pageTransform) {
         // setup the context
-        matrix = new AffineTransform();
-        shapes = new Shapes();
+        Appearance appearance = appearances.get(currentAppearance);
+        AppearanceState appearanceState = appearance.getSelectedAppearanceState();
+
+        appearanceState.setMatrix(new AffineTransform());
+        appearanceState.setShapes(new Shapes());
+
+        Rectangle2D bbox = appearanceState.getBbox();
+        AffineTransform matrix = appearanceState.getMatrix();
+        Shapes shapes;
 
         String iconContentString;
         // get the correct icon content
@@ -243,14 +246,16 @@ public class TextAnnotation extends MarkupAnnotation {
         } else {
             iconContentString = COMMENT_CONTENT_STREAM;
         }
-        // get the colour string
+        //  need to make sure we have a colour so we can generate the content stream.
+        if (color == null) {
+            color = Color.YELLOW;
+        }
         float[] compArray = new float[3];
         color.getColorComponents(compArray);
         StringBuilder colorString = new StringBuilder()
                 .append(compArray[0]).append(" ")
                 .append(compArray[1]).append(" ")
                 .append(compArray[2]);
-
         // apply the colour
         Object[] colorArgument = new Object[]{colorString};
         MessageFormat formatter = new MessageFormat(iconContentString);
@@ -263,7 +268,7 @@ public class TextAnnotation extends MarkupAnnotation {
             shapes = cp.parse(new byte[][]{iconContentString.getBytes()}, null).getShapes();
         } catch (Exception e) {
             shapes = new Shapes();
-            logger.log(Level.FINE, "Error building named icon.", e);
+            logger.log(Level.FINEST, "Error building named icon.", e);
         }
 
         // update the appearance stream
@@ -287,6 +292,7 @@ public class TextAnnotation extends MarkupAnnotation {
             Rectangle2D formBbox = new Rectangle2D.Float(0, 0,
                     (float) bbox.getWidth(), (float) bbox.getHeight());
             form.setAppearance(shapes, matrix, formBbox);
+            appearanceState.setShapes(shapes);
             stateManager.addChange(new PObject(form, form.getPObjectReference()));
             // update the AP's stream bytes so contents can be written out
             form.setRawBytes(iconContentString.getBytes());

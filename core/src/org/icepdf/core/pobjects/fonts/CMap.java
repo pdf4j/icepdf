@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2014 ICEsoft Technologies Inc.
+ * Copyright 2006-2016 ICEsoft Technologies Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -52,8 +52,26 @@ public interface CMap {
      * Some CID fonts use the one byte notation but the two byte is the most
      * common bar far.
      *
-     * @param cid character code to check length off
      * @return true if the cid should be considered as having a one byte length.
      */
-    public boolean isOneByte(int cid);
+    public boolean isOneByte();
+
+    /**
+     * Determines if the cid should be interpreted as a one or two byte character.
+     * Some CID fonts use the one byte notation but the two byte is the most
+     * common bar far.
+     *
+     * @return true if the cid should be considered as having a two byte length.
+     */
+    public boolean isTwoByte();
+
+    /**
+     * Determines if the cid should be interpreted as a one or two byte character.
+     * Some CID fonts use the one byte notation but the two byte is the most
+     * common bar far.  A mixed byte string must be parsed differently as the font
+     * can be used to determine the number of bytes used for each character.
+     *
+     * @return true if the cid should be considered as having a mixed byte length.
+     */
+    public boolean isMixedByte();
 }

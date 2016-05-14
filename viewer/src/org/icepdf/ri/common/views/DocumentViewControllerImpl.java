@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2014 ICEsoft Technologies Inc.
+ * Copyright 2006-2016 ICEsoft Technologies Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -18,6 +18,7 @@ package org.icepdf.ri.common.views;
 import org.icepdf.core.SecurityCallback;
 import org.icepdf.core.pobjects.Destination;
 import org.icepdf.core.pobjects.Document;
+import org.icepdf.core.pobjects.NamedDestinations;
 import org.icepdf.core.pobjects.PageTree;
 import org.icepdf.core.search.DocumentSearchController;
 import org.icepdf.core.util.ColorUtil;
@@ -65,7 +66,6 @@ public class DocumentViewControllerImpl
      * Displays a the pages in one column.
      */
     public static final int ONE_COLUMN_VIEW = 2;
-
     /**
      * Displays the pages two at a time, with odd-numbered pages on the left.
      */
@@ -74,7 +74,6 @@ public class DocumentViewControllerImpl
      * Displays the pages in two columns, with odd-numbered pages on the left.
      */
     public static final int TWO_COLUMN_LEFT_VIEW = 4;
-
     /**
      * Displays the pages two at a time, with event-numbered pages on the left.
      */
@@ -83,17 +82,14 @@ public class DocumentViewControllerImpl
      * Displays the pages in two columns, with even-numbered pages on the left.
      */
     public static final int TWO_COLUMN_RIGHT_VIEW = 6;
-
     /**
      * Displays the pages in two columns, with even-numbered pages on the left.
      */
     public static final int USE_ATTACHMENTS_VIEW = 7;
-
     /**
      * Zoom factor used when zooming in or out.
      */
     public static final float ZOOM_FACTOR = 1.2F;
-
     /**
      * Rotation factor used with rotating document.
      */
@@ -122,7 +118,7 @@ public class DocumentViewControllerImpl
 
     private Document document;
 
-    private DocumentViewModelImpl documentViewModel;
+    private DocumentViewModel documentViewModel;
     private AbstractDocumentView documentView;
 
     private JScrollPane documentViewScrollPane;
@@ -130,16 +126,11 @@ public class DocumentViewControllerImpl
     protected int viewportWidth, oldViewportWidth;
     protected int viewportHeight, oldViewportHeight;
     protected int viewType, oldViewType;
-
     protected int viewportFitMode, oldViewportFitMode;
-
     protected int cursorType;
-
     protected SwingController viewerController;
-
     protected AnnotationCallback annotationCallback;
     protected SecurityCallback securityCallback;
-
     protected PropertyChangeSupport changes = new PropertyChangeSupport(this);
 
 
@@ -386,6 +377,15 @@ public class DocumentViewControllerImpl
 
         if (documentView == null || documentViewModel == null) {
             return;
+        }
+
+        // check for a named destination def, and if so do the lookup.
+        NamedDestinations namedDestinations = document.getCatalog().getDestinations();
+        if (namedDestinations != null) {
+            Destination tmp = namedDestinations.getDestination(destination.getNamedDestination());
+            if (tmp != null) {
+                destination = tmp;
+            }
         }
 
         if (destination == null || destination.getPageReference() == null) {
@@ -1266,17 +1266,11 @@ public class DocumentViewControllerImpl
     }
 
     public void undo() {
-        // reloads the last modified annotations state.
-        documentViewModel.getAnnotationCareTaker().undo();
-
         // repaint the view.
         documentView.repaint();
     }
 
     public void redo() {
-        // tries to redo a previously undo command, may not do anything
-        documentViewModel.getAnnotationCareTaker().redo();
-
         // repaint the view.
         documentView.repaint();
     }

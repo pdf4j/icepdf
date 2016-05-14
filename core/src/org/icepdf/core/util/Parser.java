@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2014 ICEsoft Technologies Inc.
+ * Copyright 2006-2016 ICEsoft Technologies Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -412,6 +412,10 @@ public class Parser {
                                 }
                             }
                             obj = hashMap.get(Dictionary.TYPE_KEY);
+                            if (obj == null) {
+                                // PDF-927,  incorrect /type def.
+                                obj = hashMap.get(new Name("type"));
+                            }
                             // Process the know first level dictionaries.
                             if (obj != null && obj instanceof Name) {
                                 Name n = (Name) obj;
@@ -1071,7 +1075,6 @@ public class Parser {
         reader.reset();
     }
 
-
     public int getIntSurroundedByWhitespace() {
         int num = 0;
         boolean makeNegative = false;
@@ -1135,7 +1138,6 @@ public class Parser {
                 break;
             }
         }
-
         if (singed) {
             if (isDecimal) {
                 return -(digit + decimal);
@@ -1213,7 +1215,7 @@ public class Parser {
      */
     public static boolean isWhitespace(char c) {
         return ((c == ' ') || (c == '\t') || (c == '\r') ||
-                (c == '\n') || (c == '\f'));
+                (c == '\n') || (c == '\f') || (c == 0));
     }
 
     private static boolean isDelimiter(char c) {

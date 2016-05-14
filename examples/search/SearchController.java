@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2014 ICEsoft Technologies Inc.
+ * Copyright 2006-2016 ICEsoft Technologies Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -40,7 +40,7 @@ public class SearchController {
     public static void main(String[] args) {
 
         if (args.length < 2) {
-            System.out.println("At leasts two command line arguments must " +
+            System.out.println("At least two command line arguments must " +
                     "be specified. ");
             System.out.println("<filename> <term1> ... <termN>");
         }

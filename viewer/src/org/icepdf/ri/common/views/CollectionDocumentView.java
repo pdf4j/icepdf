@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2014 ICEsoft Technologies Inc.
+ * Copyright 2006-2016 ICEsoft Technologies Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -40,6 +40,8 @@ import java.util.HashMap;
  * @since 5.1.0
  */
 public class CollectionDocumentView extends AbstractDocumentView {
+
+    private static final long serialVersionUID = 7220521612114533227L;
 
     private JPanel collectionDocumentPanel;
 
@@ -84,7 +86,7 @@ public class CollectionDocumentView extends AbstractDocumentView {
         DocumentViewComponent documentViewComponent;
         Library library = currentDocument.getCatalog().getLibrary();
         NameTree embeddedFilesNameTree = currentDocument.getCatalog().getNames().getEmbeddedFilesNameTree();
-        java.util.List filePairs = embeddedFilesNameTree.getRoot().getNamesAndValues();
+        java.util.List filePairs = embeddedFilesNameTree.getNamesAndValues();
 
         // add components for every page in the document
         for (int i = 0, max = filePairs.size(); i < max; i += 2) {

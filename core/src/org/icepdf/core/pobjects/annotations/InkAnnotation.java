@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2014 ICEsoft Technologies Inc.
+ * Copyright 2006-2016 ICEsoft Technologies Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -32,7 +32,7 @@ import java.util.List;
 import java.util.logging.Logger;
 
 /**
- * An ink annotation (PDF 1.3) represents a freehand “scribble” composed of one
+ * An ink annotation (PDF 1.3) represents a freehand scribble composed of one
  * or more disjoint paths. When opened, it shall display a pop-up window
  * containing the text of the associated note. Table 182 shows the annotation
  * dictionary entries specific to this type of annotation.
@@ -92,6 +92,9 @@ public class InkAnnotation extends MarkupAnnotation {
             }
             resetAppearanceStream(new AffineTransform());
         }
+
+        // try and generate an appearance stream.
+        resetNullAppearanceStream();
     }
 
     /**
@@ -172,8 +175,15 @@ public class InkAnnotation extends MarkupAnnotation {
     public void resetAppearanceStream(double dx, double dy, AffineTransform pageSpace) {
 
         // setup clean shapes
-        matrix = new AffineTransform();
-        shapes = new Shapes();
+        Appearance appearance = appearances.get(currentAppearance);
+        AppearanceState appearanceState = appearance.getSelectedAppearanceState();
+
+        appearanceState.setMatrix(new AffineTransform());
+        appearanceState.setShapes(new Shapes());
+
+        Rectangle2D bbox = appearanceState.getBbox();
+        AffineTransform matrix = appearanceState.getMatrix();
+        Shapes shapes = appearanceState.getShapes();
 
         // setup the AP stream.
         setModifiedDate(PDate.formatDateTime(new Date()));
@@ -193,7 +203,7 @@ public class InkAnnotation extends MarkupAnnotation {
 
         // setup the space for the AP content stream.
         af = new AffineTransform();
-        af.translate(-this.bbox.getMinX(), -this.bbox.getMinY());
+        af.translate(-bbox.getMinX(), -bbox.getMinY());
 
         shapes.add(new TransformDrawCmd(af));
         shapes.add(new StrokeDrawCmd(stroke));

@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2014 ICEsoft Technologies Inc.
+ * Copyright 2006-2016 ICEsoft Technologies Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -28,6 +28,7 @@ import java.awt.color.ColorSpace;
 import java.awt.geom.AffineTransform;
 import java.awt.image.*;
 import java.io.ByteArrayInputStream;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Constructor;
@@ -53,19 +54,16 @@ public class ImageUtility {
             0xFFFFFFFF,
             0xFF000000
     };
-
     protected static final int[] GRAY_1_BIT_INDEX_TO_RGB = new int[]{
             0xFF000000,
             0xFFFFFFFF
     };
-
     protected static final int[] GRAY_2_BIT_INDEX_TO_RGB = new int[]{
             0xFF000000,
             0xFF555555,
             0xFFAAAAAA,
             0xFFFFFFFF
     }; // 0. 1 2 3 4 5. 6 7 8 9 A. B C D E F.     0/3, 1/3, 2/3, 3/3
-
     protected static final int[] GRAY_4_BIT_INDEX_TO_RGB = new int[]{
             0xFF000000,
             0xFF111111,
@@ -84,8 +82,6 @@ public class ImageUtility {
             0xFFEEEEEE,
             0xFFFFFFFF
     };
-
-
     protected static final int JPEG_ENC_UNKNOWN_PROBABLY_YCbCr = 0;
     protected static final int JPEG_ENC_RGB = 1;
     protected static final int JPEG_ENC_CMYK = 2;
@@ -95,7 +91,16 @@ public class ImageUtility {
 
     private static boolean scaleQuality;
 
+    private static GraphicsConfiguration configuration = null;
+
     static {
+        try {
+            configuration = GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice().getDefaultConfiguration();
+        } catch (Throwable e) {
+            // just eat it as we likely have a headless exception and need to fall back to
+            // creating our own buffers.
+        }
+
         // decide if large images will be scaled
         scaleQuality =
                 Defs.booleanProperty("org.icepdf.core.imageMaskScale.quality",
@@ -106,6 +111,38 @@ public class ImageUtility {
 
     private ImageUtility() {
 
+    }
+
+    /**
+     * Creates a new bufferd image using a GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice()
+     * instance.  If not available (headless) we full back to raw buffer creation.
+     *
+     * @param width  width of new image.
+     * @param height height of new image.
+     * @return returns an INT_RGB images.
+     */
+    public static BufferedImage createCompatibleImage(int width, int height) {
+        if (configuration != null) {
+            return configuration.createCompatibleImage(width, height);
+        } else {
+            return new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+        }
+    }
+
+    /**
+     * Creates a new bufferd image using a GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice()
+     * instance.  If not available (headless) we full back to raw buffer creation.
+     *
+     * @param width  width of new image.
+     * @param height height of new image.
+     * @return
+     */
+    public static BufferedImage createTranslucentCompatibleImage(int width, int height) {
+        if (configuration != null) {
+            return configuration.createCompatibleImage(width, height, Transparency.TRANSLUCENT);
+        } else {
+            return new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+        }
     }
 
     public static ImageUtility getInstance() {
@@ -152,7 +189,6 @@ public class ImageUtility {
                         red >= maskMinRed && red <= maskMaxRed) {
                     alpha = 0x00;
                 }
-
                 if (alpha != 0xFF) {
                     argb = bi.getRGB(x, y);
                     argb &= 0x00FFFFFF;
@@ -164,35 +200,48 @@ public class ImageUtility {
         return bi;
     }
 
+    public static void writeImage(final BufferedImage bufferedImage, final String fileName,
+                                  String baseOutputPath){
+        try {
+            ImageIO.write(bufferedImage, "PNG",
+                    new File(baseOutputPath + fileName + ".png"));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
     public static void displayImage(final BufferedImage bufferedImage, final String title) {
 
         if (bufferedImage == null) {
             return;
         }
+
         SwingUtilities.invokeLater(new Runnable() {
             public void run() {
                 final JFrame f = new JFrame("Image - " + title);
                 f.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
+                final int width = (int) (bufferedImage.getWidth() * 1.2);
+                final int height = (int) (bufferedImage.getHeight() * 1.2);
 
                 JComponent image = new JComponent() {
                     @Override
                     public void paint(Graphics g_) {
                         super.paint(g_);
                         g_.setColor(Color.green);
-                        g_.fillRect(0, 0, 800, 800);
+                        g_.fillRect(0, 0, 10000, 10000);
                         g_.drawImage(bufferedImage, 0, 0, f);
                         g_.setColor(Color.red);
                         g_.drawRect(0, 0, bufferedImage.getWidth() - 2, bufferedImage.getHeight() - 2);
                     }
                 };
                 image.setPreferredSize(new Dimension(bufferedImage.getWidth(), bufferedImage.getHeight()));
-                image.setSize(new Dimension(bufferedImage.getWidth(), bufferedImage.getHeight()));
+                image.setSize(new Dimension(width, height));
 
                 JPanel test = new JPanel();
-                test.setPreferredSize(new Dimension(1200, 1200));
+                test.setPreferredSize(new Dimension(width, height));
                 JScrollPane tmp = new JScrollPane(image);
                 tmp.revalidate();
-                f.setSize(new Dimension(800, 800));
+                f.setSize(new Dimension(width, height));
                 f.getContentPane().add(tmp);
                 f.validate();
                 f.setVisible(true);
@@ -252,6 +301,7 @@ public class ImageUtility {
 
 //        return new BufferedImage(raster.getWidth(), raster.getHeight(), BufferedImage.TYPE_INT_RGB);
     }
+
 
     protected static BufferedImage makeRGBBufferedImage(WritableRaster wr) {
         ColorSpace cs = ColorSpace.getInstance(ColorSpace.CS_sRGB);
@@ -315,16 +365,16 @@ public class ImageUtility {
         }
         if (bImage == null) {
             // Create a buffered image using the default color model
-            int type = BufferedImage.TYPE_INT_RGB;
-            if (hasAlpha) {
-                type = BufferedImage.TYPE_INT_ARGB;
-            }
             int width = image.getWidth(null);
             int height = image.getHeight(null);
             if (width == -1 || height == -1) {
                 return null;
             }
-            bImage = new BufferedImage(width, height, type);
+            if (hasAlpha) {
+                bImage = ImageUtility.createTranslucentCompatibleImage(width, height);
+            } else {
+                bImage = ImageUtility.createCompatibleImage(width, height);
+            }
         }
         // Copy image to buffered image
         Graphics g = bImage.createGraphics();
@@ -456,7 +506,7 @@ public class ImageUtility {
      * image mask need not have the same resolution (width, height), but since
      * all images are defined on the unit square in user space, their boundaries on the
      * page will conincide; that is, they will overlay each other.
-     * <p/>
+     * <p>
      * The image mask indicates indicates which places on the page are to be painted
      * and which are to be masked out (left unchanged).  Unmasked areas are painted
      * with the corresponding portions of the base image; masked areas are not.
@@ -480,8 +530,7 @@ public class ImageUtility {
         baseWidth = baseImage.getWidth();
         baseHeight = baseImage.getHeight();
 
-        BufferedImage argbImage = new BufferedImage(baseWidth,
-                baseHeight, BufferedImage.TYPE_INT_ARGB);
+        BufferedImage argbImage = ImageUtility.createTranslucentCompatibleImage(baseWidth, baseHeight);
         int[] srcBand = new int[baseWidth];
         int[] maskBnd = new int[baseWidth];
         // iterate over each band to apply the mask
@@ -506,12 +555,57 @@ public class ImageUtility {
     }
 
     /**
+     * Blending mode colour transparency test.
+     *
+     * @param baseImage
+     * @param blendingMode
+     * @param blendColor
+     * @return
+     */
+    public static BufferedImage applyBlendingMode(BufferedImage baseImage, Name blendingMode, Color blendColor) {
+
+//        extGState.getBlendingMode().equals("Multiply")
+
+
+        // check to make sure the mask and the image are the same size.
+
+        // apply the mask by simply painting white to the base image where
+        // the mask specified no colour.
+        int baseWidth = baseImage.getWidth();
+        int baseHeight = baseImage.getHeight();
+
+        BufferedImage argbImage = ImageUtility.createTranslucentCompatibleImage(baseWidth, baseHeight);
+        int[] srcBand = new int[baseWidth];
+        int[] blendBand = new int[baseWidth];
+        int blendColorValue = blendColor.getRGB();
+        // iterate over each band to apply the mask
+        for (int i = 0; i < baseHeight; i++) {
+            baseImage.getRGB(0, i, baseWidth, 1, srcBand, 0, baseWidth);
+            // apply the soft mask blending
+            for (int j = 0; j < baseWidth; j++) {
+
+                if (srcBand[j] == blendColorValue || srcBand[j] == 0xffffff || srcBand[j] == 0xffff) {
+                    //  set the pixel as transparent
+                    blendBand[j] = 0xff;
+                } else {
+                    blendBand[j] = srcBand[j];
+                }
+            }
+            argbImage.setRGB(0, i, baseWidth, 1, blendBand, 0, baseWidth);
+        }
+        baseImage.flush();
+        baseImage = argbImage;
+
+        return baseImage;
+    }
+
+    /**
      * (see 11.6.5.3, "Soft-Mask Images")
      * A subsidiary image XObject defining a soft-mask image that shall be used
      * as a source of mask shape or mask opacity values in the transparent imaging
      * model. The alpha source parameter in the graphics state determines whether
      * the mask values shall be interpreted as shape or opacity.
-     * <p/>
+     * <p>
      * If present, this entry shall override the current soft mask in the graphics
      * state, as well as the image’s Mask entry, if any. However, the other
      * transparency-related graphics state parameters—blend mode and alpha
@@ -533,12 +627,9 @@ public class ImageUtility {
         int baseHeight = baseImage.getHeight();
 
         BufferedImage argbImage;
-        if (hasAlpha(baseImage)) {
-            argbImage = baseImage;
-        } else {
-            argbImage = new BufferedImage(baseWidth,
-                    baseHeight, BufferedImage.TYPE_INT_ARGB);
-        }
+        // aways create a new buffer as we need leave the pevioius image un change for some type of masks.
+        argbImage = ImageUtility.createTranslucentCompatibleImage(baseWidth, baseHeight);
+
         int[] srcBand = new int[baseWidth];
         int[] sMaskBand = new int[baseWidth];
         // iterate over each band to apply the mask
@@ -547,12 +638,101 @@ public class ImageUtility {
             sMaskImage.getRGB(0, i, baseWidth, 1, sMaskBand, 0, baseWidth);
             // apply the soft mask blending
             for (int j = 0; j < baseWidth; j++) {
-                if (sMaskBand[j] != -1 || sMaskBand[j] != 0xffffff || sMaskBand[j] != 0) {
-                    sMaskBand[j] = ((sMaskBand[j] & 0xff) << 24)
-                            | (srcBand[j] & ~0xff000000);
-                }
+                // take any one of the primaries and apply src image alpha.
+                int red = (sMaskBand[j] >> 16) & 0x000000FF;
+                int alpha = (srcBand[j] >> 24) & 0x000000FF;
+                int sa = ((int) (red * (alpha / 255.0f))) << 24;
+                // apply the smask value as the alpha value
+                srcBand[j] = sa
+                        | (srcBand[j] & ~0xff000000);
             }
-            argbImage.setRGB(0, i, baseWidth, 1, sMaskBand, 0, baseWidth);
+            argbImage.setRGB(0, i, baseWidth, 1, srcBand, 0, baseWidth);
+        }
+        baseImage.flush();
+        baseImage = argbImage;
+
+        return baseImage;
+    }
+
+    public static BufferedImage applyExplicitLuminosity(BufferedImage baseImage, BufferedImage sMaskImage) {
+
+        // check to make sure the mask and the image are the same size.
+        BufferedImage[] images = scaleImagesToSameSize(baseImage, sMaskImage);
+        baseImage = images[0];
+        sMaskImage = images[1];
+        // apply the mask by simply painting white to the base image where
+        // the mask specified no colour.
+        int baseWidth = baseImage.getWidth();
+        int baseHeight = baseImage.getHeight();
+
+        BufferedImage argbImage;
+        // aways create a new buffer as we need leave the pevioius image un change for some type of masks.
+        argbImage = ImageUtility.createTranslucentCompatibleImage(baseWidth, baseHeight);
+
+        int[] srcBand = new int[baseWidth];
+        int[] sMaskBand = new int[baseWidth];
+        // iterate over each band to apply the mask
+        for (int i = 0; i < baseHeight; i++) {
+            baseImage.getRGB(0, i, baseWidth, 1, srcBand, 0, baseWidth);
+            sMaskImage.getRGB(0, i, baseWidth, 1, sMaskBand, 0, baseWidth);
+            for (int j = 0; j < baseWidth; j++) {
+                int red = (srcBand[j] >> 16) & 0x000000FF;
+                int green = (srcBand[j] >> 8) & 0x000000FF;
+                int blue = (srcBand[j]) & 0x000000FF;
+                // colour is used as a degree of masking.
+                int alpha = (sMaskBand[j] >> 16) & 0x000000FF;
+                int trans = (sMaskBand[j] >> 24) & 0x000000FF;
+
+                int redOut = Math.min(255, red - alpha);
+                int greenOut = Math.min(255, green - alpha);
+                int blueOut = Math.min(255, blue - alpha);
+//                trans = trans - alpha;,
+
+                // todo still broken,  needs some more examples/
+                srcBand[j] = trans << 24
+                        | Math.max(0, redOut) << 16
+                        | Math.max(0, greenOut) << 8
+                        | Math.max(0, blueOut);
+            }
+            argbImage.setRGB(0, i, baseWidth, 1, srcBand, 0, baseWidth);
+        }
+        baseImage.flush();
+        baseImage = argbImage;
+
+        return baseImage;
+    }
+
+    public static BufferedImage applyExplicitOutline(BufferedImage baseImage, BufferedImage sMaskImage) {
+
+        // check to make sure the mask and the image are the same size.
+        BufferedImage[] images = scaleImagesToSameSize(baseImage, sMaskImage);
+        baseImage = images[0];
+        sMaskImage = images[1];
+        // apply the mask by simply painting white to the base image where
+        // the mask specified no colour.
+        int baseWidth = baseImage.getWidth();
+        int baseHeight = baseImage.getHeight();
+
+        BufferedImage argbImage;
+        // aways create a new buffer as we need leave the pevioius image un change for some type of masks.
+        argbImage = ImageUtility.createTranslucentCompatibleImage(baseWidth, baseHeight);
+
+        int[] srcBand = new int[baseWidth];
+        int[] sMaskBand = new int[baseWidth];
+        // iterate over each band to apply the outline,  where the outline is any pixel with alpha.
+        for (int i = 0; i < baseHeight; i++) {
+            baseImage.getRGB(0, i, baseWidth, 1, srcBand, 0, baseWidth);
+            sMaskImage.getRGB(0, i, baseWidth, 1, sMaskBand, 0, baseWidth);
+            for (int j = 0; j < baseWidth; j++) {
+                // take any one of the primaries and apply src image alpha.
+                int alpha = (sMaskBand[j] >> 24) & 0x000000FF;
+                int sa = alpha << 24;
+                // apply the smask value as the alpha value
+                if (sMaskBand[j] == 0)
+                    srcBand[j] = sa
+                            | (srcBand[j] & ~0xff000000);
+            }
+            argbImage.setRGB(0, i, baseWidth, 1, srcBand, 0, baseWidth);
         }
         baseImage.flush();
         baseImage = argbImage;
@@ -579,18 +759,24 @@ public class ImageUtility {
         if (hasAlpha(baseImage)) {
             imageMask = baseImage;
         } else {
-            imageMask = new BufferedImage(baseWidth,
-                    baseHeight, BufferedImage.TYPE_INT_ARGB);
+            imageMask = ImageUtility.createTranslucentCompatibleImage(baseWidth, baseHeight);
         }
         // apply the mask by simply painting white to the base image where
         // the mask specified no colour.
-        for (int y = 0; y < baseHeight; y++) {
-            for (int x = 0; x < baseWidth; x++) {
-                int maskPixel = baseImage.getRGB(x, y);
-                if (!(maskPixel == -1 || maskPixel == 0xffffff)) {
-                    imageMask.setRGB(x, y, fill.getRGB());
+        int[] srcBand = new int[baseWidth];
+        int[] maskBnd = new int[baseWidth];
+        int fillRgb = fill.getRGB();
+        // iterate over each band to apply the mask
+        for (int i = 0; i < baseHeight; i++) {
+            baseImage.getRGB(0, i, baseWidth, 1, srcBand, 0, baseWidth);
+            imageMask.getRGB(0, i, baseWidth, 1, maskBnd, 0, baseWidth);
+            // apply the soft mask blending
+            for (int j = 0; j < baseWidth; j++) {
+                if (!(srcBand[j] == -1 || srcBand[j] == 0xffffff)) {
+                    maskBnd[j] = fillRgb;
                 }
             }
+            imageMask.setRGB(0, i, baseWidth, 1, maskBnd, 0, baseWidth);
         }
         // clean up the old image.
         baseImage.flush();
@@ -621,7 +807,7 @@ public class ImageUtility {
         DataBuffer db = wr.getDataBuffer();
 //        SampleModel sm = new PixelInterleavedSampleModel(db.getDataType(), width, height, 1, width, new int[]{0});
 //        WritableRaster wr = Raster.createWritableRaster(sm, db, new Point(0, 0));
-        ColorModel cm = new IndexColorModel(bitsPerComponent, cmap.length, cmap, 0, false, -1, db.getDataType());
+        ColorModel cm = new IndexColorModel(bitsPerComponent, cmap.length, cmap, 0, true, -1, db.getDataType());
         img = new BufferedImage(cm, wr, false, null);
         return img;
     }
@@ -829,6 +1015,22 @@ public class ImageUtility {
         return jpegEncoding;
     }
 
+    public static BufferedImage applyGrayDecode(BufferedImage rgbImage, int bitsPerComponent, float[] decode) {
+        WritableRaster wr = rgbImage.getRaster();
+        int[] cmap = null;
+        if (bitsPerComponent == 1) {
+            boolean defaultDecode = 0.0f == decode[0];
+            cmap = defaultDecode ? GRAY_1_BIT_INDEX_TO_RGB : GRAY_1_BIT_INDEX_TO_RGB_REVERSED;
+        } else if (bitsPerComponent == 2) {
+            cmap = GRAY_2_BIT_INDEX_TO_RGB;
+        } else if (bitsPerComponent == 4) {
+            cmap = GRAY_4_BIT_INDEX_TO_RGB;
+        }
+        ColorModel cm = new IndexColorModel(bitsPerComponent, cmap.length, cmap, 0, false, -1, wr.getDataBuffer().getDataType());
+        rgbImage = new BufferedImage(cm, wr, false, null);
+        return rgbImage;
+    }
+
     public static BufferedImage convertSpaceToRgb(
             Raster colourRaster, PColorSpace colorSpace,
             float[] decode) {
@@ -945,7 +1147,7 @@ public class ImageUtility {
 
     protected static BufferedImage makeImageWithRasterFromBytes(
             PColorSpace colourSpace,
-            Color fill,
+            GraphicsState graphicsState,
             int width, int height,
             int colorSpaceCompCount,
             int bitsPerComponent,
@@ -985,6 +1187,7 @@ public class ImageUtility {
                 boolean defaultDecode = decode[0] == 0.0f;
                 //int a = Color.white.getRGB();
                 int a = 0x00FFFFFF; // Clear if alpha supported, else white
+                Color fill = graphicsState.getFillColor();
                 int[] cmap = new int[]{
                         (defaultDecode ? fill.getRGB() : a),
                         (defaultDecode ? a : fill.getRGB())
@@ -1014,31 +1217,10 @@ public class ImageUtility {
                 ColorModel cm = new IndexColorModel(bitsPerComponent, cmap.length, cmap, 0, false, -1, db.getDataType());
                 img = new BufferedImage(cm, wr, false, null);
             } else if (bitsPerComponent == 8) {
-                //int data_length = data.length;
-                DataBuffer db = new DataBufferByte(data, dataLength);
-                SampleModel sm = new PixelInterleavedSampleModel(db.getDataType(),
-                        width, height, 1, width, new int[]{0});
-                WritableRaster wr = Raster.createWritableRaster(sm, db, new Point(0, 0));
-                // apply decode array manually
-                byte[] dataValues = new byte[sm.getNumBands()];
-                float[] origValues = new float[sm.getNumBands()];
-                for (int y = 0; y < height; y++) {
-                    for (int x = 0; x < width; x++) {
-                        ImageUtility.getNormalizedComponents(
-                                (byte[]) wr.getDataElements(x, y, dataValues),
-                                decode,
-                                origValues
-                        );
-                        float gray = origValues[0] * 255;
-                        byte rByte = (gray < 0) ? (byte) 0 : (gray > 255) ? (byte) 0xFF : (byte) gray;
-                        origValues[0] = rByte;
-                        wr.setPixel(x, y, origValues);
-                    }
-                }
-                ColorSpace cs = ColorSpace.getInstance(ColorSpace.CS_GRAY);
-                ColorModel cm = new ComponentColorModel(cs, new int[]{bitsPerComponent},
-                        false, false, ColorModel.OPAQUE, db.getDataType());
-                img = new BufferedImage(cm, wr, false, null);
+                img = ImageUtility.createCompatibleImage(width, height);
+                // convert image data to rgb, seems to to give better colour tones. ?
+                int[] dataToRGB = ((DataBufferInt) img.getRaster().getDataBuffer()).getData();
+                copyDecodedStreamBytesIntoGray(data, dataToRGB, decode);
             }
         } else if (colourSpace instanceof DeviceRGB) {
             if (bitsPerComponent == 8) {
@@ -1127,7 +1309,8 @@ public class ImageUtility {
                     img = new BufferedImage(cm, wr, false, null);
                 } else if (usingAlpha) {
                     int[] rgbaData = new int[width * height];
-                    for (int index = 0; index < dataLength; index++) {
+                    // use rgbaData length as an inline image may have a couple extra bytes at the end.
+                    for (int index = 0, max = rgbaData.length; index < max; index++) {
                         int cmapIndex = (data[index] & 0xFF);
                         rgbaData[index] = cmap[cmapIndex];
                     }
@@ -1158,6 +1341,8 @@ public class ImageUtility {
                     cmap = GRAY_2_BIT_INDEX_TO_RGB;
                 } else if (bitsPerComponent == 4) {
                     cmap = GRAY_4_BIT_INDEX_TO_RGB;
+                } else if (bitsPerComponent == 8) {
+                    return null;
                 }
                 ColorModel cm = new IndexColorModel(bitsPerComponent, cmap.length, cmap, 0, false, -1, db.getDataType());
                 img = new BufferedImage(cm, wr, false, null);
@@ -1187,6 +1372,35 @@ public class ImageUtility {
                     argb |= ((((int) rgb[1]) << 8) & 0x0000FF00);
                 if (haveRead >= 3)
                     argb |= (((int) rgb[2]) & 0x000000FF);
+                pixels[pixelIndex] = argb;
+            }
+            input.close();
+        } catch (IOException e) {
+            logger.log(Level.FINE, "Problem copying decoding stream bytes: ", e);
+        }
+    }
+
+    private static void copyDecodedStreamBytesIntoGray(byte[] data, int[] pixels, float[] decode) {
+        byte[] rgb = new byte[1];
+        boolean defaultDecode = 0.0f == decode[0];
+        int Y;
+        try {
+            InputStream input = new ByteArrayInputStream(data);
+            for (int pixelIndex = 0; pixelIndex < pixels.length; pixelIndex++) {
+                int argb = 0xFF000000;
+                final int toRead = 1;
+                int haveRead = 0;
+                while (haveRead < toRead) {
+                    int currRead = input.read(rgb, haveRead, toRead - haveRead);
+                    if (currRead < 0)
+                        break;
+                    haveRead += currRead;
+                }
+                Y = (int) rgb[0] & 0xff;
+                Y = defaultDecode ? Y : 255 - Y;
+                argb |= (Y << 16) & 0x00FF0000;
+                argb |= (Y << 8) & 0x0000FF00;
+                argb |= (Y & 0x000000FF);
                 pixels[pixelIndex] = argb;
             }
             input.close();

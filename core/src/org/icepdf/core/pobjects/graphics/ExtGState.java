@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2014 ICEsoft Technologies Inc.
+ * Copyright 2006-2016 ICEsoft Technologies Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -45,7 +45,7 @@ import java.util.logging.Logger;
  * <td valign="top" >Type</td>
  * <td valign="top" >name</td>
  * <td>(Optional) The type of PDF object that this dictionary describes;
- * must beExtGState for a graphics state parameter dictionary.</td>
+ * must be ExtGState for a graphics state parameter dictionary.</td>
  * </tr>
  * <tr>
  * <td valign="top" >LW</td>
@@ -238,6 +238,12 @@ public class ExtGState extends Dictionary {
     public static final Name op_KEY = new Name("op");
     public static final Name OPM_KEY = new Name("OPM");
     public static final Name D_KEY = new Name("D");
+    public static final Name AIS_KEY = new Name("AIS");
+    public static final Name HT_KEY = new Name("HT");
+    public static final Name BG2_KEY = new Name("BG2");
+    // (Optional) A flag specifying whether to apply automatic stroke adjustment
+    // (see 10.6.5, "Automatic Stroke Adjustment").
+    public static final Name SA_KEY = new Name("SA");
 
     /**
      * Creates a a new Graphics State object.
@@ -256,7 +262,7 @@ public class ExtGState extends Dictionary {
      * @return the line width with Number value.  If the line width was not
      *         specified in the dictionary null is returned.
      */
-    Number getLineWidth() {
+    public Number getLineWidth() {
         return getNumber(LW_KEY);
     }
 
@@ -266,7 +272,7 @@ public class ExtGState extends Dictionary {
      * @return the line cap style Number value.  If the cap style was not
      *         specified in the dictionary null is returned.
      */
-    Number getLineCapStyle() {
+    public Number getLineCapStyle() {
         return getNumber(LC_KEY);
     }
 
@@ -275,8 +281,15 @@ public class ExtGState extends Dictionary {
      *
      * @return
      */
-    Name getBlendingMode() {
-        return library.getName(entries, BM_KEY);
+    public Name getBlendingMode() {
+        Object tmp = library.getObject(entries, BM_KEY);
+        if (tmp instanceof Name) {
+            return (Name) tmp;
+        } else if (tmp instanceof List) {
+            List list = (List) tmp;
+            return (Name) list.get(0);
+        }
+        return null;
     }
 
     /**
@@ -285,7 +298,7 @@ public class ExtGState extends Dictionary {
      * @return the line join style Number value.  If the join style was not
      *         specified in the dictionary null is returned.
      */
-    Number getLineJoinStyle() {
+    public Number getLineJoinStyle() {
         return getNumber(LJ_KEY);
     }
 
@@ -305,7 +318,7 @@ public class ExtGState extends Dictionary {
      * @return the line dash array [dashArray dashPhase].  If the dash pattern
      *         is not specified the dictionary null is returned.
      */
-    List getLineDashPattern() {
+    public List getLineDashPattern() {
         List<Object> dashPattern = null;
         Number dashPhase;
         float[] dashArray = null;
@@ -347,18 +360,26 @@ public class ExtGState extends Dictionary {
      * @return the stroking alpha constant value.  If the stroking alpha constant
      *         was not specified in the dictionary null is returned.
      */
-    Number getStrokingAlphConstant() {
-        return getNumber(CA_KEY);
+    public float getStrokingAlphConstant() {
+        if (getNumber(CA_KEY) != null)
+            return getFloat(CA_KEY);
+        else {
+            return -1;
+        }
     }
 
     /**
      * Gets the non-stroking alpha constant specified by the external graphics state.
      *
-     * @return the vstroking alpha constant value.  If the non-stroking alpha constant
+     * @return the non stroking alpha constant value.  If the non-stroking alpha constant
      *         was not specified in the dictionary null is returned.
      */
-    Number getNonStrokingAlphConstant() {
-        return getNumber(ca_KEY);
+    public float getNonStrokingAlphConstant() {
+        if (getNumber(ca_KEY) != null)
+            return getFloat(ca_KEY);
+        else {
+            return -1;
+        }
     }
 
     /**
@@ -373,7 +394,7 @@ public class ExtGState extends Dictionary {
      *
      * @return true if OP is enabled.
      */
-    Boolean getOverprint() {
+    public Boolean getOverprint() {
         Object o = getObject(OP_KEY);
         if (o instanceof String)
             return Boolean.valueOf((String) o);
@@ -383,6 +404,16 @@ public class ExtGState extends Dictionary {
         return null;
     }
 
+    public Boolean isAlphaAShape() {
+        Object o = getObject(AIS_KEY);
+        if (o instanceof String)
+            return Boolean.valueOf((String) o);
+        else if (o instanceof Boolean) {
+            return (Boolean) o;
+        }
+        return false;
+    }
+
     /**
      * An optional flag specifying whether to apply overprint for
      * painting operations other than stroking. If this entry is absent,
@@ -390,7 +421,7 @@ public class ExtGState extends Dictionary {
      *
      * @return true if enabled, false otherwise.
      */
-    Boolean getOverprintFill() {
+    public Boolean getOverprintFill() {
         Object o = getObject(op_KEY);
         if (o instanceof String)
             return Boolean.valueOf((String) o);
@@ -405,8 +436,24 @@ public class ExtGState extends Dictionary {
      *
      * @return
      */
-    Number getOverprintMode() {
-        return getNumber(OPM_KEY);
+    public int getOverprintMode() {
+        return getInt(OPM_KEY);
+    }
+
+    public boolean hasOverPrintMode() {
+        return library.getObject(entries, OPM_KEY) != null;
+    }
+
+    public boolean hasAlphaIsShape() {
+        return library.getObject(entries, AIS_KEY) != null;
+    }
+
+    public boolean hasHalfTone() {
+        return library.getObject(entries, HT_KEY) != null;
+    }
+
+    public boolean hasBG2Function() {
+        return library.getObject(entries, BG2_KEY) != null;
     }
 
 
@@ -415,6 +462,7 @@ public class ExtGState extends Dictionary {
         if (tmp != null && tmp instanceof HashMap) {
             // create a new SMask dictionary
             SoftMask softMask = new SoftMask(library, (HashMap) tmp);
+            softMask.setPObjectReference(library.getReference(entries, SMASK_KEY));
             return softMask;
         }
         return null;

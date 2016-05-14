@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2014 ICEsoft Technologies Inc.
+ * Copyright 2006-2016 ICEsoft Technologies Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -51,6 +51,14 @@ public class Action extends Dictionary {
 
     public static final Name ACTION_TYPE_URI = new Name("URI");
 
+    public static final Name ACTION_TYPE_RESET_SUBMIT = new Name("ResetForm");
+
+    public static final Name ACTION_TYPE_SUBMIT_SUBMIT = new Name("SubmitForm");
+
+    public static final Name ACTION_TYPE_NAMED = new Name("Named");
+
+    public static final Name ACTION_TYPE_JAVA_SCRIPT = new Name("JavaScript");
+
     // type of annotation
     private String type;
 
@@ -79,6 +87,14 @@ public class Action extends Dictionary {
                 return new LaunchAction(library, hashMap);
             } else if (actionType.equals(Action.ACTION_TYPE_URI)) {
                 return new URIAction(library, hashMap);
+            } else if (actionType.equals(Action.ACTION_TYPE_RESET_SUBMIT)) {
+                return new ResetFormAction(library, hashMap);
+            } else if (actionType.equals(Action.ACTION_TYPE_SUBMIT_SUBMIT)) {
+                return new SubmitFormAction(library, hashMap);
+            } else if (actionType.equals(Action.ACTION_TYPE_NAMED)) {
+                return new NamedAction(library, hashMap);
+            } else if (actionType.equals(Action.ACTION_TYPE_JAVA_SCRIPT)) {
+                return new JavaScriptAction(library, hashMap);
             }
         }
         return new Action(library, hashMap);

@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2014 ICEsoft Technologies Inc.
+ * Copyright 2006-2016 ICEsoft Technologies Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -75,8 +75,6 @@ public class AnnotationFactory {
             return TextAnnotation.getInstance(library, rect);
         } else if (subType.equals(Annotation.SUBTYPE_POPUP)) {
             return PopupAnnotation.getInstance(library, rect);
-        } else if (subType.equals(Annotation.SUBTYPE_WIDGET)) {
-            return WidgetAnnotation.getInstance(library, rect);
         } else {
             logger.warning("Unsupported Annotation type. ");
             return null;

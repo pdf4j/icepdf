@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2014 ICEsoft Technologies Inc.
+ * Copyright 2006-2016 ICEsoft Technologies Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -22,18 +22,27 @@ import org.icepdf.ri.common.views.DocumentViewController;
 import org.icepdf.ri.common.views.DocumentViewModel;
 
 import java.awt.*;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 
 /**
  *
  */
 @SuppressWarnings("serial")
-public class WidgetAnnotationComponent extends AbstractAnnotationComponent {
+public class WidgetAnnotationComponent extends AbstractAnnotationComponent implements PropertyChangeListener {
 
 
     public WidgetAnnotationComponent(Annotation annotation, DocumentViewController documentViewController,
                                      AbstractPageViewComponent pageViewComponent, DocumentViewModel documentViewModel) {
         super(annotation, documentViewController, pageViewComponent, documentViewModel);
         isShowInvisibleBorder = true;
+        isResizable = true;
+        isMovable = true;
+
+        // assign property change listener so we can notification of annotation value change, via the
+        // edit panel or form reset action.
+        annotation.addPropertyChangeListener(this);
+
     }
 
     @Override
@@ -43,6 +52,14 @@ public class WidgetAnnotationComponent extends AbstractAnnotationComponent {
 
     @Override
     public void paintComponent(Graphics g) {
+
+    }
+
+    public boolean isActive() {
+        return false;
+    }
+
+    public void propertyChange(PropertyChangeEvent evt) {
 
     }
 }

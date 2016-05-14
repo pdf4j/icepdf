@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2014 ICEsoft Technologies Inc.
+ * Copyright 2006-2016 ICEsoft Technologies Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -33,6 +33,9 @@ public class ActionFactory {
     public static final int GOTO_ACTION = 1;
     public static final int URI_ACTION = 2;
     public static final int LAUNCH_ACTION = 3;
+
+    private ActionFactory() {
+    }
 
     /**
      * Creates a new ACTION object of the type specified by the type constant.

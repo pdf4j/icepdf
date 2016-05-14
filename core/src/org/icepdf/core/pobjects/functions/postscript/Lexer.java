@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2014 ICEsoft Technologies Inc.
+ * Copyright 2006-2016 ICEsoft Technologies Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -36,7 +36,6 @@ public class Lexer {
     private char[] buf = new char[2056];
     private int pos = 0, numRead = 0, startTokenPos = 0;
     private int tokenType = 0;
-
     // expression depth count used to properly differ if and elseif operands.
     private int expressionDepth;
 

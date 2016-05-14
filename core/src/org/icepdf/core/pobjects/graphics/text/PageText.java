@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2014 ICEsoft Technologies Inc.
+ * Copyright 2006-2016 ICEsoft Technologies Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -59,6 +59,8 @@ public class PageText implements TextSelect {
 
     private ArrayList<LineText> pageLines;
     private ArrayList<LineText> sortedPageLines;
+
+    private AffineTransform previousTextTransform;
 
     private LinkedHashMap<OptionalContents, PageText> optionalPageLines;
 
@@ -188,6 +190,21 @@ public class PageText implements TextSelect {
         }
     }
 
+    public void setTextTransform(AffineTransform affineTransform){
+        // look to see if we have shear and thus text that has been rotated, if so we insert a page break
+        if (previousTextTransform != null && currentLine != null){
+            // hard round as we're just looking for a 90 degree shift in writing direction.
+            // if found we clear the current work so we can start a new word.
+            if ((previousTextTransform.getShearX() < 0 && (int)affineTransform.getShearX() > 0) ||
+                    (previousTextTransform.getShearX() > 0 && (int)affineTransform.getShearX() < 0) ||
+                    (previousTextTransform.getShearY() < 0 && (int)affineTransform.getShearY() > 0) ||
+                    (previousTextTransform.getShearY() > 0 && (int)affineTransform.getShearY() < 0)) {
+                currentLine.clearCurrentWord();
+            }
+        }
+        previousTextTransform = affineTransform;
+    }
+
     public void addGlyph(GlyphText glyphText, LinkedList<OptionalContents> oCGs) {
         if (oCGs != null && oCGs.size() > 0) {
             if (oCGs.peek() != null) {
@@ -226,7 +243,7 @@ public class PageText implements TextSelect {
             for (WordText wordText : lineText.getWords()) {
                 wordText.clearBounds();
                 for (GlyphText glyph : wordText.getGlyphs()) {
-                    glyph.normalizeToUserSpace(transform);
+                    glyph.normalizeToUserSpace(transform, null);
                 }
             }
         }
@@ -343,12 +360,17 @@ public class PageText implements TextSelect {
                         Collections.sort(words, new LinePositionComparator());
                     }
                     // break the words into lines on every change of y
-                    double lastY = words.get(0).getBounds().y;
+                    double lastY = Math.round(words.get(0).getTextExtractionBounds().y);
                     int start = 0, end = 0;
-                    double currentY;
+                    double currentY = 0, diff;
                     for (WordText word : words) {
-                        currentY = Math.round(word.getBounds().getY());
-                        if (currentY != lastY) {
+                        currentY = Math.round(word.getTextExtractionBounds().getY());
+                        // little bit of tolerance for detecting a line,  basically anything that is
+                        // >  then half the current word height / 2 will be marked as a break.
+                        // this works well enough sub and super script and inconsistencies
+                        // on table base text.
+                        diff = Math.abs(currentY - lastY);
+                        if (diff != 0 && diff > word.getTextExtractionBounds().getHeight() / 2) {
                             LineText lineText = new LineText();
                             lineText.addAll(words.subList(start, end));
                             sortedPageLines.add(lineText);

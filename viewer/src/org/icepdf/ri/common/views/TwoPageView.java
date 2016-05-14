@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2014 ICEsoft Technologies Inc.
+ * Copyright 2006-2016 ICEsoft Technologies Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -51,7 +51,7 @@ public class TwoPageView extends AbstractDocumentView {
 
     public TwoPageView(DocumentViewController documentDocumentViewController,
                        JScrollPane documentScrollpane,
-                       DocumentViewModelImpl documentViewModel,
+                       DocumentViewModel documentViewModel,
                        final int viewAlignment) {
 
         super(documentDocumentViewController, documentScrollpane, documentViewModel);
@@ -142,6 +142,7 @@ public class TwoPageView extends AbstractDocumentView {
                     // add component to layout
                     pagesPanel.add(new PageViewDecorator((JComponent) pageViewComponent));
                     pageViewComponent.invalidate();
+                    ((JComponent) pageViewComponent).validate();
                     count++;
                 }
             }

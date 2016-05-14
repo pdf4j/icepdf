@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2014 ICEsoft Technologies Inc.
+ * Copyright 2006-2016 ICEsoft Technologies Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -86,7 +86,6 @@ public class Encoding implements org.icepdf.core.pobjects.fonts.Encoding {
             {80, 8364}  // euro
     };
     public static int[] registeredAlaises = {182};
-
     static {
         h = new HashMap<String, Integer>(1046);
         h.put("A", 65);

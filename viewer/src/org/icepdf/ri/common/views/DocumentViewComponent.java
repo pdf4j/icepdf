@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2014 ICEsoft Technologies Inc.
+ * Copyright 2006-2016 ICEsoft Technologies Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -38,6 +38,8 @@ import java.lang.ref.SoftReference;
  */
 public class DocumentViewComponent extends JComponent implements MouseListener, Runnable {
 
+    private static final long serialVersionUID = -8881023489246309889L;
+   
     private Library parentLibrary;
     private Reference fileReference;
     private String fileName;
@@ -85,15 +87,13 @@ public class DocumentViewComponent extends JComponent implements MouseListener, 
 
             // calculate how big/small the thumbnail needs to be
             PDimension defaultSize = page.getSize(Page.BOUNDARY_CROPBOX, 0, 1f);
-            float scale = minimumThumbHeight / defaultSize.getHeight();
+            float scale = minimumThumbHeight / (float) defaultSize.getHeight();
             pageSize = page.getSize(Page.BOUNDARY_CROPBOX, 0, scale).toDimension();
 
             int pageWidth = (int) pageSize.getWidth();
             int pageHeight = (int) pageSize.getHeight();
 
-            BufferedImage image = new BufferedImage(pageWidth,
-                    pageHeight,
-                    BufferedImage.TYPE_INT_RGB);
+            BufferedImage image = ImageUtility.createTranslucentCompatibleImage(pageWidth, pageHeight);
             Graphics g = image.createGraphics();
 
             page.paint(g, GraphicsRenderingHints.PRINT,
