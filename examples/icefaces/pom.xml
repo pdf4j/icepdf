@@ -27,10 +27,10 @@
         <icefaces.product.group>org.icefaces</icefaces.product.group>
         <icefaces.product.name>ICEfaces</icefaces.product.name>
         <icefaces.lib.name>icefaces</icefaces.lib.name>
-        <icefaces.version>4.0.0</icefaces.version>
+        <icefaces.version>4.1.1</icefaces.version>
         <icepdf.version>6.1.1</icepdf.version>
         <!-- Versions of JSF implementations -->
-        <mojarra.version>2.2.4</mojarra.version>
+        <mojarra.version>2.2.12</mojarra.version>
         <!-- Various library versions settable from one place -->
         <annotation.version>1.0</annotation.version>
         <el.version>2.2.1</el.version>
@@ -145,6 +145,11 @@
                     <target>1.6</target>
                 </configuration>
             </plugin>
+			 <plugin>
+				<groupId>org.apache.tomcat.maven</groupId>
+				<artifactId>tomcat7-maven-plugin</artifactId>
+				<version>2.2</version>
+			</plugin>		
         </plugins>
     </build>
 </project>
