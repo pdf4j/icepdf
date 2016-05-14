@@ -17,8 +17,8 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
     <modelVersion>4.0.0</modelVersion>
-    <groupId>org.icepdf.os</groupId>
-    <artifactId>icepdf</artifactId>
+    <groupId>org.pdf4j.icepdf</groupId>
+    <artifactId>icepdf-webview</artifactId>
     <packaging>war</packaging>
     <name>ICEpdf-icefaces</name>
     <url>http://www.icepdf.org/</url>
@@ -28,7 +28,7 @@
         <icefaces.product.name>ICEfaces</icefaces.product.name>
         <icefaces.lib.name>icefaces</icefaces.lib.name>
         <icefaces.version>4.0.0</icefaces.version>
-        <icepdf.version>5.1.1_P01</icepdf.version>
+        <icepdf.version>6.1.1</icepdf.version>
         <!-- Versions of JSF implementations -->
         <mojarra.version>2.2.4</mojarra.version>
         <!-- Various library versions settable from one place -->
@@ -54,7 +54,7 @@
     <dependencies>
 
         <dependency>
-            <groupId>org.icepdf.os</groupId>
+            <groupId>org.pdf4j.icepdf</groupId>
             <artifactId>icepdf-core</artifactId>
             <version>${icepdf.version}</version>
         </dependency>
@@ -139,7 +139,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>2.0.2</version>
+                <version>2.5.1</version>
                 <configuration>
                     <source>1.6</source>
                     <target>1.6</target>
