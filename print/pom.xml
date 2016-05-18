@@ -1,0 +1,43 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>org.pdf4j.icepdf</groupId>
+        <artifactId>pdf4j-icepdf-pom</artifactId>
+        <version>6.1.1</version>
+    </parent>
+    <artifactId>pdf4j-icepdf-print</artifactId>
+    <name>PDF4J ICEPDF Print</name> 
+    <url>http://pdf4j.gitbub.io/icepdf</url>
+    <dependencies>
+        <dependency>
+            <groupId>org.pdf4j.icepdf</groupId>
+            <artifactId>pdf4j-icepdf-core</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+    </dependencies>
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>2.4.3</version>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                        <configuration>
+                            <transformers>
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                                    <mainClass>org.pdf4j.icepdf.util.PrinterApplication</mainClass>
+                                </transformer>
+                            </transformers>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>	
+</project>
