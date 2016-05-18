@@ -22,6 +22,7 @@
         </dependency>
     </dependencies>
     <build>
+        <finalName>${project.artifactId}-${project.profile}-${project.version}</finalName>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -55,4 +56,31 @@
             </plugin>
         </plugins>
     </build>    
+    <profiles>
+        <profile>
+            <id>asl</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
+            <properties>
+                <project.profile>asl</project.profile>
+            </properties>
+        </profile>
+        <profile>
+            <id>gpl</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+            <properties>
+                <project.profile>gpl</project.profile>
+            </properties>
+            <dependencies>
+                <dependency>
+                    <groupId>com.levigo.jbig2</groupId>
+                    <artifactId>levigo-jbig2-imageio</artifactId>
+                    <version>1.6.5</version>
+                </dependency>
+            </dependencies>
+        </profile>
+    </profiles>
 </project>

@@ -10,6 +10,7 @@
   <name>PDF4J ICEPDF Viewer App Bundle</name>
   <url>http://pdf4j.gitbub.io/icepdf</url>
   <build>
+    <finalName>${project.artifactId}-${project.profile}-${project.version}</finalName>
     <plugins>
       <plugin>
         <artifactId>maven-shade-plugin</artifactId>
@@ -42,5 +43,27 @@
       </plugin>
     </plugins>
   </build>
+  <profiles>
+    <profile>
+      <id>asl</id>
+      <properties>
+        <project.profile>asl</project.profile>
+      </properties>
+    </profile>
+    <profile>
+      <id>gpl</id>
+      <dependencies>
+        <dependency>
+          <groupId>com.levigo.jbig2</groupId>
+          <artifactId>levigo-jbig2-imageio</artifactId>
+          <version>1.6.5</version>
+          <scope>compile</scope>
+        </dependency>
+      </dependencies>
+      <properties>
+        <project.profile>gpl</project.profile>
+      </properties>
+    </profile>
+  </profiles>
 </project>
 
