@@ -1,23 +1,17 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
     <modelVersion>4.0.0</modelVersion>
-	
     <groupId>org.pdf4j.icepdf</groupId>
-    <artifactId>icepdf-pom</artifactId>
+    <artifactId>pdf4j-icepdf-pom</artifactId>
     <version>6.1.1</version>
-	
-    <name>ICEPDF Pom</name>
-	
+    <name>PDF4J ICEPDF Pom</name>
+    <url>http://pdf4j.gitbub.io/icepdf</url>
     <packaging>pom</packaging>
     <properties>
         <jdk.version>1.6</jdk.version>
         <bouncycastle.version>1.54</bouncycastle.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
-    <modules>
-        <module>core</module>
-        <module>viewer</module>
-    </modules>
     <dependencies>
         <dependency>
             <groupId>org.bouncycastle</groupId>
@@ -36,17 +30,12 @@
         </dependency>
     </dependencies>	
     <build>
-        <sourceDirectory>.</sourceDirectory>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>2.5.1</version>
+                <version>3.5.1</version>
                 <configuration>
-                    <includes>
-                        <include>src/**/*.java</include>
-                        <include>copy/**/*.java</include>
-                    </includes>
                     <source>${jdk.version}</source>
                     <target>${jdk.version}</target>
                     <encoding>${project.build.sourceEncoding}</encoding>
@@ -54,38 +43,29 @@
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-resources-plugin</artifactId>
-                <version>2.7</version>
-                <executions>
-                    <execution>
-                        <id>copy-resources</id>
-                        <phase>validate</phase>
-                        <goals>
-                            <goal>copy-resources</goal>
-                        </goals>                
-                        <configuration>
-                            <outputDirectory>${basedir}/target/classes</outputDirectory>
-                            <includeEmptyDirs>true</includeEmptyDirs>
-                            <resources>
-                                <resource>
-                                    <directory>src</directory>
-                                    <includes>
-                                        <include>**/*.afm</include>
-                                        <include>**/*.icc</include>
-                                        <include>**/*.html</include>
-                                        <include>**/*.properties</include>
-                                        <include>**/*.gif</include>
-                                        <include>**/*.png</include>
-                                        <include>**/*.jpg</include>
-                                        <include>**/*.xml</include>
-                                    </includes>
-                                </resource>
-                            </resources>
-                        </configuration> 
-                    </execution>
-                </executions>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>2.6</version>
+                <configuration>
+                    <archive>
+                        <manifest>
+                            <addDefaultImplementationEntries>true</addDefaultImplementationEntries>
+                            <addDefaultSpecificationEntries>true</addDefaultSpecificationEntries>
+                        </manifest>
+                        <manifestEntries>
+                            <URL>${project.url}</URL>
+                            <Extension-Name>${project.artifactId}</Extension-Name>
+                        </manifestEntries>
+                    </archive>
+                </configuration>
             </plugin>
         </plugins>
     </build>
-
+    <modules>
+        <module>core</module>
+        <module>print</module>
+        <module>viewer</module>
+        <module>viewerapp</module>
+        <module>webviewer</module>
+        <module>examples</module>
+    </modules>
 </project>

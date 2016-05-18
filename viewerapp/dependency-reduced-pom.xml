@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+  <parent>
+    <artifactId>pdf4j-icepdf-pom</artifactId>
+    <groupId>org.pdf4j.icepdf</groupId>
+    <version>6.1.1</version>
+  </parent>
+  <modelVersion>4.0.0</modelVersion>
+  <artifactId>pdf4j-icepdf-viewerapp</artifactId>
+  <name>PDF4J ICEPDF Viewer App Bundle</name>
+  <url>http://pdf4j.gitbub.io/icepdf</url>
+  <build>
+    <plugins>
+      <plugin>
+        <artifactId>maven-shade-plugin</artifactId>
+        <version>2.4.3</version>
+        <executions>
+          <execution>
+            <phase>package</phase>
+            <goals>
+              <goal>shade</goal>
+            </goals>
+            <configuration>
+              <transformers>
+                <transformer>
+                  <mainClass>org.icepdf.ri.viewer.Main</mainClass>
+                </transformer>
+              </transformers>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+</project>
+

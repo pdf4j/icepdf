@@ -145,7 +145,7 @@ public class PrinterApplication {
             hd.add(MediaName.NA_LETTER_WHITE);
             //hd.add(Sides.TWO_SIDED_LONG_EDGE);
 
-            PrintHelper printHelper = new PrintHelper(null, pdf.getPageTree(),
+            PrintHelper printHelper = new PrintHelper(null, pdf.getPageTree(), 0f,
                     hd, hp);
             printHelper.setupPrintService(selectedService, hp, true);
             System.out.println("Print job started, " + new Date());

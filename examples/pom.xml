@@ -6,9 +6,9 @@
         <artifactId>pdf4j-icepdf-pom</artifactId>
         <version>6.1.1</version>
     </parent> 
-    <artifactId>pdf4j-icepdf-viewer</artifactId>
-    <name>PDF4J ICEPDF Viewer</name>	
-    <url>http://pdf4j.gitbub.io/icepdf</url>
+    <artifactId>pdf4j-icepdf-examples</artifactId>
+    <name>PDF4J ICEPDF Examples</name>	
+	<url>http://pdf4j.gitbub.io/icepdf</url>
     <properties>
         <batik.version>1.6</batik.version>
     </properties>    	
@@ -19,19 +19,9 @@
             <version>${project.version}</version>
         </dependency>
         <dependency>
-            <groupId>org.bouncycastle</groupId>
-            <artifactId>bcpkix-jdk15on</artifactId>
-            <version>${bouncycastle.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.bouncycastle</groupId>
-            <artifactId>bcprov-jdk15on</artifactId>
-            <version>${bouncycastle.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.bouncycastle</groupId>
-            <artifactId>bcprov-ext-jdk15on</artifactId>
-            <version>${bouncycastle.version}</version>
+            <groupId>org.pdf4j.icepdf</groupId>
+            <artifactId>pdf4j-icepdf-viewer</artifactId>
+            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>batik</groupId>

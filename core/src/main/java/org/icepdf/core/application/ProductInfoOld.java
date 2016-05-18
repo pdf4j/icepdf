@@ -15,7 +15,7 @@
  */
 package org.icepdf.core.application;
 
-public class ProductInfo {
+public class ProductInfoOld {
 
     /**
      * The company that owns this product.
@@ -92,7 +92,7 @@ public class ProductInfo {
     }
 
 	public static void main(String[] args) {
-        ProductInfo app = new ProductInfo();
+        ProductInfoOld app = new ProductInfoOld();
         System.out.println( app.toString() );
     }
 

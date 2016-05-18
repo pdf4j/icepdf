@@ -3,11 +3,12 @@
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>org.pdf4j.icepdf</groupId>
-        <artifactId>icepdf-pom</artifactId>
+        <artifactId>pdf4j-icepdf-pom</artifactId>
         <version>6.1.1</version>
     </parent>
-    <artifactId>icepdf-core</artifactId>
-    <name>ICEPDF Core</name>  	
+    <artifactId>pdf4j-icepdf-core</artifactId>
+    <name>PDF4J ICEPDF Core</name> 
+    <url>http://pdf4j.gitbub.io/icepdf</url>
     <dependencies>
         <dependency>
             <groupId>org.bouncycastle</groupId>
@@ -24,5 +25,28 @@
             <artifactId>bcprov-ext-jdk15on</artifactId>
             <version>${bouncycastle.version}</version>
         </dependency>
-    </dependencies>	
+    </dependencies>
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>build-helper-maven-plugin</artifactId>
+                <version>1.10</version>
+                <executions>
+                    <execution>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>add-source</goal>
+                        </goals>
+                        <configuration>
+                            <sources>
+                                <source>src/main/java</source>
+                                <source>src/main/pdf4j</source>
+                            </sources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build> 	
 </project>
