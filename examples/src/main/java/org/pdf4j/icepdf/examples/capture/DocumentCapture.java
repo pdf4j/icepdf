@@ -1,3 +1,5 @@
+package org.pdf4j.icepdf.examples.capture;
+
 import org.icepdf.core.exceptions.PDFException;
 import org.icepdf.core.exceptions.PDFSecurityException;
 import org.icepdf.core.pobjects.Document;

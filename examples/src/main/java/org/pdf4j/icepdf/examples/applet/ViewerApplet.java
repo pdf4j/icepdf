@@ -13,6 +13,7 @@
  * express or implied. See the License for the specific language
  * governing permissions and limitations under the License.
  */
+package org.pdf4j.icepdf.examples.applet;
 
 import org.icepdf.ri.common.MyAnnotationCallback;
 import org.icepdf.ri.common.SwingController;

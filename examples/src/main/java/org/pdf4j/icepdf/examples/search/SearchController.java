@@ -13,7 +13,7 @@
  * express or implied. See the License for the specific language
  * governing permissions and limitations under the License.
  */
-
+package org.pdf4j.icepdf.examples.search;
 
 import org.icepdf.core.pobjects.Document;
 import org.icepdf.core.pobjects.graphics.text.WordText;
