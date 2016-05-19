@@ -8,7 +8,7 @@
     <url>http://pdf4j.gitbub.io/icepdf</url>
     <packaging>pom</packaging>
     <properties>
-        <jdk.version>1.6</jdk.version>
+        <jdk.version>1.7</jdk.version>
         <bouncycastle.version>1.54</bouncycastle.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
