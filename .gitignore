@@ -16,3 +16,5 @@ hs_err_pid*
 /webviewer/target/
 /viewerapp/target/
 /print/target/
+/print/dependency-reduced-pom.xml
+/viewerapp/dependency-reduced-pom.xml
