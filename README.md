@@ -7,9 +7,11 @@ Part of re-org project has been moved to maven project structure. New modules in
 ### Project Modules
 
 * _**core**_ - Main ICEPDF core API with enhancements, it is pure java implementation to view Acrobat PDF files.  
-* _**print**_ - Simple Java API to print PDF from Java applications.
+* _**print**_ - Simple Java API to print PDF from Java applications. For those who want 
+use `levigo jbig2` needs to manually build using gpl profile.
 * _**viewer**_ - Java Swing based application to view Acrobat PDF files.
-* _**viewerapp**_ - A bundled application of viewer, self contained jar with all dependent jars included.
+* _**viewerapp**_ - A bundled application of viewer, self contained jar with all dependent 
+jars included. For those who want use `levigo jbig2` needs to manually build using gpl profile.
 * _**examples**_ - Some of java examples to use ICEPDF library
 * _**webviewe**r_ - A JSF 2.x based web application which uses ICEPDF library to view and transform.
 
@@ -17,7 +19,7 @@ Part of re-org project has been moved to maven project structure. New modules in
 
 ## CORE API
 
-ICEPDF 4 API, as is from SVN repository. Additional support classes are added to get clean compile of the project.
+ICEPDF API, as is from SVN repository. Additional support classes are added to get clean compile of the project.
 
 #### Maven dependency
 
@@ -49,16 +51,24 @@ Simple Java POJO classes provides the ability to print support form java applica
 Use command line to print PDF files silently.
 
 ```
-java -jar pdf4j-icepdf-print-6.1.1.jar -file "PDF File name" -printer "Printer Name"
+For projects which cannot use GPL based library can use the Apache license version
+
+java -jar pdf4j-icepdf-print-6.1.1-asl.jar -file "PDF File name" -printer "Printer Name"
+
+For those who can use GPL, use GPL version
+
+java -jar pdf4j-icepdf-print-6.1.1-gpl.jar -file "PDF File name" -printer "Printer Name"
 
 Parameter details:
         -file     "pdf file name", required field
         -printer  "printer name", Optional default printer used when ignored
         -help      Print this usage help.
 ```
-#### TODO List
+#### PDF4J Print API
 
-Print API provide limited features for silent printing. More features needs to be added for better print support.
+This PDF4J ICEPDF Print API provide limited features for silent printing. 
+
+For more advanced print features and control, use PDF4J Print API which gives better print support and control.
 
 ***
 
@@ -82,5 +92,24 @@ Standalone PDF Viewer, with self contained classes in a single jar file.
 ```
 java -jar pdf4j-icepdf-viewerapp.jar
 ```
+***
+
+## Manual Build for GPL use
+
+For those who want use levigo jbig2 needs to manually build using gpl profile. Currently `PRINT` and `VIEWER` modules support these profile.
+
+```
+cd print 
+or 
+cd viewerapp
+
+mvn clean package -Pgpl
+```
+
+***
+
+## License
+
+All contributions and work performed by PDF4J Team is applicable under ASL 2.0
 
 ***
