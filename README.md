@@ -50,20 +50,23 @@ Simple Java POJO classes provides the ability to print support form java applica
 
 Use command line to print PDF files silently.
 
-```
 For projects which cannot use GPL based library can use the Apache license version
 
+```
 java -jar pdf4j-icepdf-print-6.1.1-asl.jar -file "PDF File name" -printer "Printer Name"
+```
 
-For those who can use GPL, use GPL version
-
+For those who can use GPL, use GPL version. Make a note, this require manual build to activate gpl profile `-Pgpl`.
+```
 java -jar pdf4j-icepdf-print-6.1.1-gpl.jar -file "PDF File name" -printer "Printer Name"
-
+```
+```
 Parameter details:
         -file     "pdf file name", required field
         -printer  "printer name", Optional default printer used when ignored
         -help      Print this usage help.
 ```
+
 #### PDF4J Print API
 
 This PDF4J ICEPDF Print API provide limited features for silent printing. 
@@ -85,12 +88,17 @@ ICEPDF Java Viewer, as is from SVN repository.
     <version>6.1.1</version>  
 </dependency>  
 ```
-#### Using Standalone Java Viewer
+#### Using Standalone Java Swing Viewer 
 
-Standalone PDF Viewer, with self contained classes in a single jar file. 
+Standalone PDF Viewer, with self contained classes in a single jar file. Use manual build to create GPL jar file.
 
 ```
-java -jar pdf4j-icepdf-viewerapp.jar
+java -jar pdf4j-icepdf-viewerapp-asl.jar
+```
+or
+
+```
+java -jar pdf4j-icepdf-viewerapp-gpl.jar
 ```
 ***
 
