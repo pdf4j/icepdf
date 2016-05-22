@@ -8,7 +8,7 @@
         <version>6.1.1</version>
     </parent> 
     <artifactId>pdf4j-icepdf-webview</artifactId>
-    <name>PDF4j ICEPDF WebViewer</name>	
+    <name>PDF4J ICEPDF WebViewer</name>	
     <packaging>war</packaging>
     <url>http://pdf4j.gitbub.io/icepdf</url>
     <properties>
