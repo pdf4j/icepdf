@@ -94,8 +94,8 @@
                         width="30" height="25"/>
             </h:panelGroup>
             <h:panelGroup styleClass="floatLeft">
-                <h:selectOneMenu partialSubmit="true"
-                                 disabled="#{documentManager.currentDocumentState == null}"
+<!--                <h:selectOneMenu partialSubmit="true"-->
+                <h:selectOneMenu disabled="#{documentManager.currentDocumentState == null}"
                                  value="#{documentManager.currentDocumentState.zoom}"
                                  valueChangeListener="#{documentManager.documentZoomLevelChange}">
                     <f:ajax render="@all" execute="@this"/>
@@ -106,7 +106,7 @@
 
             <!-- rotate left -->
             <h:panelGroup styleClass="floatLeft"
-                          style="padding-left:20px;padding-right:10px margin-left:10px;">
+                          style="padding-left:20px;padding-right:10px; margin-left:10px;">
                 <h:commandLink
                         styleClass="command leftCommand"
                         disabled="#{documentManager.currentDocumentState == null}"
