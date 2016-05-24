@@ -121,3 +121,11 @@ mvn clean package -Pgpl
 All contributions and work performed by PDF4J Team is applicable under ASL 2.0
 
 ***
+
+## About Branches
+
+This repository has three branches.
+  
+* **master** - main sources
+* **svn-icepdf** - sources directly from svn repository
+* **gh-pages** - public web pages and documentation
