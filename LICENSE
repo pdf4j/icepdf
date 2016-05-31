@@ -1,6 +1,6 @@
 # License
-ICEPDF is under Apache license
-PDF4J changes are unde Apache license
+ICEPDF is under Apache software license (ASL)  
+All contributions and work performed by PDF4J Team is applicable under ASL 2.0  
 Some of the optional library are in eigher BSD or GPL license. Check moodules for information.
 ***
 ----------------------------------------------------------------------------
