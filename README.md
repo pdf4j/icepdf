@@ -118,8 +118,8 @@ mvn clean package -Pgpl
 
 ## License
 
-ICEPDF is under Apache license (ASL).
-All contributions and work performed by PDF4J Team is applicable under ASL 2.0
+ICEPDF is under Apache license (ASL).  
+All contributions and work performed by PDF4J Team is applicable under ASL 2.0  
 Some of the optional library are in eigher BSD or GPL license. Check moodules for information.
 
 ***
