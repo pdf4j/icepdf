@@ -21,8 +21,6 @@ import org.icepdf.core.pobjects.acroform.FieldDictionary;
 import org.icepdf.core.pobjects.acroform.FieldDictionaryFactory;
 import org.icepdf.core.pobjects.actions.Action;
 import org.icepdf.core.pobjects.graphics.Shapes;
-import org.icepdf.core.pobjects.graphics.commands.DrawCmd;
-import org.icepdf.core.pobjects.graphics.commands.ShapeDrawCmd;
 import org.icepdf.core.pobjects.security.SecurityManager;
 import org.icepdf.core.util.GraphicsRenderingHints;
 import org.icepdf.core.util.Library;
@@ -534,7 +532,6 @@ public abstract class Annotation extends Dictionary {
     protected Name subtype;
     // content flag
     protected String content;
-    protected boolean contentInAnnotSpace = true;
     // borders style of the annotation, can be null
     protected BorderStyle borderStyle;
     // border defined by vector
@@ -752,30 +749,13 @@ public abstract class Annotation extends Dictionary {
             if (rect.getHeight() <= 1) {
                 rect.setRect(rect.getX(), rect.getY(), rect.getWidth(), 15);
             }
-            appearanceDictionary.put(BBOX_VALUE, rect);
+            appearanceDictionary.put(BBOX_VALUE, new Rectangle2D.Float(
+                    0, 0, (float) rect.getWidth(), (float) rect.getHeight()));
 
             newAppearance.addAppearance(APPEARANCE_STREAM_NORMAL_KEY,
                     new AppearanceState(library, appearanceDictionary));
             appearances.put(APPEARANCE_STREAM_NORMAL_KEY, newAppearance);
             currentAppearance = APPEARANCE_STREAM_NORMAL_KEY;
-        }
-
-        // check to see if we have an annotation that is likely painted in page space and as a result we
-        // don't need to to the rectangle translation.
-        Shapes shapes = getShapes();
-        Rectangle2D.Float rect = getUserSpaceRectangle();
-        Rectangle2D bounds = null;
-        if (shapes != null) {
-            ArrayList<DrawCmd> drawCmds = getShapes().getShapes();
-            if (drawCmds != null) {
-                for (DrawCmd drawCmd : drawCmds) {
-                    if (drawCmd instanceof ShapeDrawCmd)
-                        bounds = ((ShapeDrawCmd) drawCmd).getShape().getBounds2D();
-                }
-                if (bounds != null && rect.contains(bounds)) {
-                    contentInAnnotSpace = false;
-                }
-            }
         }
     }
 
@@ -859,8 +839,13 @@ public abstract class Annotation extends Dictionary {
 
     public Rectangle2D getBbox() {
         Appearance appearance = appearances.get(currentAppearance);
-        AppearanceState appearanceState = appearance.getSelectedAppearanceState();
-        return appearanceState.getBbox();
+        if (appearance != null) {
+            AppearanceState appearanceState = appearance.getSelectedAppearanceState();
+            if (appearanceState != null) {
+                return appearanceState.getBbox();
+            }
+        }
+        return null;
     }
 
     protected void resetNullAppearanceStream() {
@@ -891,7 +876,7 @@ public abstract class Annotation extends Dictionary {
      *
      * @return dashed or solid stoke.
      */
-    public Stroke getBorderStyleStroke() {
+    public BasicStroke getBorderStyleStroke() {
         if (borderStyle.isStyleDashed()) {
             return new BasicStroke(
                     borderStyle.getStrokeWidth(), BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER,
@@ -1246,10 +1231,8 @@ public abstract class Annotation extends Dictionary {
         ////Graphics2D g = (Graphics2D) origG.create();
 
         AffineTransform at = new AffineTransform(oldAT);
-
-        if (contentInAnnotSpace) {
-            at.translate(rect.getMinX(), rect.getMinY());
-        }
+        // translate to annotation location, as all coordinates "should" be relative to this point.
+        at.translate(rect.getMinX(), rect.getMinY());
 
         boolean noRotate = getFlagNoRotate();
         if (noRotate) {
@@ -1289,7 +1272,6 @@ public abstract class Annotation extends Dictionary {
         g.setRenderingHints(grh.getRenderingHints(renderHintType));
         g.setTransform(at);
         Shape preAppearanceStreamClip = g.getClip();
-//        Shape annotationShape = deriveDrawingRectangle();
         g.clip(deriveDrawingRectangle());
 
         renderAppearanceStream(g);
@@ -1340,10 +1322,16 @@ public abstract class Annotation extends Dictionary {
             AffineTransform tAs = AffineTransform.getScaleInstance(
                     (rect.getWidth() / tBbox.getWidth()),
                     (rect.getHeight() / tBbox.getHeight()));
-            if (matrix.getTranslateX() > 0 || matrix.getTranslateY() > 0) {
-                // we have to align the boxes.
-                matrix.setToTranslation(rect.getX() - matrix.getTranslateX(),
-                        rect.getY() - matrix.getTranslateY());
+
+            // check for identity transformation
+            // we have to be careful in such as case as the coordinates of the annotation may actually
+            // be in page space.  If the rectangle in page pace is more or less the same location
+            // as the tbbox then we know the annotation coordinate space must also be in page space.
+            // Thus we shift back to page space.
+            if (rect.getMinX() == tBbox.getMinX() && rect.getMinY() == tBbox.getMinY()) {
+                tAs.setToTranslation(-rect.getX(), -rect.getY());
+            } else {
+                tAs.setToTranslation(-tBbox.getX(), -tBbox.getY());
             }
             // Step 3. matrix is concatenated with A to form a matrix AA
             // that maps from the appearance's coordinate system to the
@@ -1351,6 +1339,7 @@ public abstract class Annotation extends Dictionary {
             tAs.concatenate(matrix);
             g.transform(tAs);
 
+            AffineTransform preAf = g.getTransform();
             // regular paint
             try {
                 appearanceState.getShapes().paint(g);
@@ -1358,6 +1347,8 @@ public abstract class Annotation extends Dictionary {
                 Thread.currentThread().interrupt();
                 logger.fine("Page Annotation Painting interrupted.");
             }
+
+            g.setTransform(preAf);
         }
 
     }
@@ -1599,10 +1590,8 @@ public abstract class Annotation extends Dictionary {
         Rectangle2D.Float origRect = getUserSpaceRectangle();
         Rectangle2D.Float jrect = new Rectangle2D.Float(origRect.x, origRect.y,
                 origRect.width, origRect.height);
-        if (contentInAnnotSpace) {
-            jrect.x = 0.0f;
-            jrect.y = 0.0f;
-        }
+        jrect.x = 0.0f;
+        jrect.y = 0.0f;
         return jrect;
     }
 
@@ -1796,7 +1785,7 @@ public abstract class Annotation extends Dictionary {
         }
 
         if (form != null && shapes != null && rawBytes != null) {
-            Rectangle2D formBbox = new Rectangle2D.Float(0, 0,
+            Rectangle2D formBbox = new Rectangle2D.Float((float) bbox.getX(), (float) bbox.getY(),
                     (float) bbox.getWidth(), (float) bbox.getHeight());
             form.setAppearance(shapes, matrix, formBbox);
 
@@ -1877,7 +1866,6 @@ public abstract class Annotation extends Dictionary {
         Appearance appearance = appearances.get(currentAppearance);
         AppearanceState appearanceState = appearance.getSelectedAppearanceState();
 
-        appearanceState.setBbox(bbox);
         Rectangle2D tBbox = appearanceState.getMatrix().createTransformedShape(bbox).getBounds2D();
         setUserSpaceRectangle(new Rectangle2D.Float(
                 (float) tBbox.getX(), (float) tBbox.getY(),
