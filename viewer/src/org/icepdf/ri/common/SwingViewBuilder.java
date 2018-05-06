@@ -588,6 +588,7 @@ public class SwingViewBuilder {
         fileMenu.addSeparator();
         addToMenu(fileMenu, buildPermissionsMenuItem());
         addToMenu(fileMenu, buildInformationMenuItem());
+        addToMenu(fileMenu, buildFontInformationMenuItem());
         fileMenu.addSeparator();
         addToMenu(fileMenu, buildPrintSetupMenuItem());
         addToMenu(fileMenu, buildPrintMenuItem());
@@ -673,6 +674,14 @@ public class SwingViewBuilder {
                 messageBundle.getString("viewer.menu.documentInformation.label"), null, null, null);
         if (viewerController != null && mi != null)
             viewerController.setInformationMenuItem(mi);
+        return mi;
+    }
+
+    public JMenuItem buildFontInformationMenuItem() {
+        JMenuItem mi = makeMenuItem(
+                messageBundle.getString("viewer.menu.documentFonts.label"), null, null, null);
+        if (viewerController != null && mi != null)
+            viewerController.setFontInformationMenuItem(mi);
         return mi;
     }
 
@@ -1421,9 +1430,18 @@ public class SwingViewBuilder {
     public JToolBar buildAnnotationlToolBar() {
         JToolBar toolbar = new JToolBar();
         commonToolBarSetup(toolbar, false);
-        addToToolBar(toolbar, buildSelectToolButton(Images.SIZE_LARGE));
-        addToToolBar(toolbar, buildHighlightAnnotationToolButton(Images.SIZE_LARGE));
-        addToToolBar(toolbar, buildTextAnnotationToolButton(Images.SIZE_LARGE));
+        if (PropertiesManager.checkAndStoreBooleanProperty(propertiesManager,
+                PropertiesManager.PROPERTY_SHOW_TOOLBAR_ANNOTATION_SELECTION)) {
+            addToToolBar(toolbar, buildSelectToolButton(Images.SIZE_LARGE));
+        }
+        if (PropertiesManager.checkAndStoreBooleanProperty(propertiesManager,
+                PropertiesManager.PROPERTY_SHOW_TOOLBAR_ANNOTATION_HIGHLIGHT)) {
+            addToToolBar(toolbar, buildHighlightAnnotationToolButton(Images.SIZE_LARGE));
+        }
+        if (PropertiesManager.checkAndStoreBooleanProperty(propertiesManager,
+                PropertiesManager.PROPERTY_SHOW_TOOLBAR_ANNOTATION_TEXT)) {
+            addToToolBar(toolbar, buildTextAnnotationToolButton(Images.SIZE_LARGE));
+        }
         return toolbar;
     }
 
@@ -1437,17 +1455,50 @@ public class SwingViewBuilder {
     public JToolBar buildAnnotationUtilityToolBar() {
         JToolBar toolbar = new JToolBar();
         commonToolBarSetup(toolbar, true);
-        addToToolBar(toolbar, buildHighlightAnnotationUtilityToolButton(Images.SIZE_MEDIUM));
-        addToToolBar(toolbar, buildStrikeOutAnnotationToolButton());
-        addToToolBar(toolbar, buildUnderlineAnnotationToolButton());
-        addToToolBar(toolbar, buildLineAnnotationToolButton());
-        addToToolBar(toolbar, buildLinkAnnotationToolButton());
-        addToToolBar(toolbar, buildLineArrowAnnotationToolButton());
-        addToToolBar(toolbar, buildSquareAnnotationToolButton());
-        addToToolBar(toolbar, buildCircleAnnotationToolButton());
-        addToToolBar(toolbar, buildInkAnnotationToolButton());
-        addToToolBar(toolbar, buildFreeTextAnnotationToolButton());
-        addToToolBar(toolbar, buildTextAnnotationUtilityToolButton(Images.SIZE_MEDIUM));
+        if (PropertiesManager.checkAndStoreBooleanProperty(propertiesManager,
+                PropertiesManager.PROPERTY_SHOW_UTILITY_ANNOTATION_HIGHLIGHT)) {
+            addToToolBar(toolbar, buildHighlightAnnotationUtilityToolButton(Images.SIZE_MEDIUM));
+        }
+        if (PropertiesManager.checkAndStoreBooleanProperty(propertiesManager,
+                PropertiesManager.PROPERTY_SHOW_UTILITY_ANNOTATION_STRIKE_OUT)) {
+            addToToolBar(toolbar, buildStrikeOutAnnotationToolButton());
+        }
+        if (PropertiesManager.checkAndStoreBooleanProperty(propertiesManager,
+                PropertiesManager.PROPERTY_SHOW_UTILITY_ANNOTATION_UNDERLINE)) {
+            addToToolBar(toolbar, buildUnderlineAnnotationToolButton());
+        }
+        if (PropertiesManager.checkAndStoreBooleanProperty(propertiesManager,
+                PropertiesManager.PROPERTY_SHOW_UTILITY_ANNOTATION_LINE)) {
+            addToToolBar(toolbar, buildLineAnnotationToolButton());
+        }
+        if (PropertiesManager.checkAndStoreBooleanProperty(propertiesManager,
+                PropertiesManager.PROPERTY_SHOW_UTILITY_ANNOTATION_LINK)) {
+            addToToolBar(toolbar, buildLinkAnnotationToolButton());
+        }
+        if (PropertiesManager.checkAndStoreBooleanProperty(propertiesManager,
+                PropertiesManager.PROPERTY_SHOW_UTILITY_ANNOTATION_ARROW)) {
+            addToToolBar(toolbar, buildLineArrowAnnotationToolButton());
+        }
+        if (PropertiesManager.checkAndStoreBooleanProperty(propertiesManager,
+                PropertiesManager.PROPERTY_SHOW_UTILITY_ANNOTATION_RECTANGLE)) {
+            addToToolBar(toolbar, buildSquareAnnotationToolButton());
+        }
+        if (PropertiesManager.checkAndStoreBooleanProperty(propertiesManager,
+                PropertiesManager.PROPERTY_SHOW_UTILITY_ANNOTATION_CIRCLE)) {
+            addToToolBar(toolbar, buildCircleAnnotationToolButton());
+        }
+        if (PropertiesManager.checkAndStoreBooleanProperty(propertiesManager,
+                PropertiesManager.PROPERTY_SHOW_UTILITY_ANNOTATION_INK)) {
+            addToToolBar(toolbar, buildInkAnnotationToolButton());
+        }
+        if (PropertiesManager.checkAndStoreBooleanProperty(propertiesManager,
+                PropertiesManager.PROPERTY_SHOW_UTILITY_ANNOTATION_FREE_TEXT)) {
+            addToToolBar(toolbar, buildFreeTextAnnotationToolButton());
+        }
+        if (PropertiesManager.checkAndStoreBooleanProperty(propertiesManager,
+                PropertiesManager.PROPERTY_SHOW_UTILITY_ANNOTATION_TEXT)) {
+            addToToolBar(toolbar, buildTextAnnotationUtilityToolButton(Images.SIZE_MEDIUM));
+        }
         return toolbar;
     }
 
@@ -1824,10 +1875,18 @@ public class SwingViewBuilder {
             // Regardless we'll add the parent JPanel, to preserve the same layout behaviour
             if (PropertiesManager.checkAndStoreBooleanProperty(propertiesManager,
                     PropertiesManager.PROPERTY_SHOW_STATUSBAR_VIEWMODE)) {
-                viewPanel.add(buildPageViewSinglePageNonConToggleButton());
-                viewPanel.add(buildPageViewSinglePageConToggleButton());
-                viewPanel.add(buildPageViewFacingPageNonConToggleButton());
-                viewPanel.add(buildPageViewFacingPageConToggleButton());
+                if (PropertiesManager.checkAndStoreBooleanProperty(propertiesManager,
+                        PropertiesManager.PROPERTY_SHOW_STATUSBAR_VIEWMODE_SINGLE))
+                    viewPanel.add(buildPageViewSinglePageNonConToggleButton());
+                if (PropertiesManager.checkAndStoreBooleanProperty(propertiesManager,
+                        PropertiesManager.PROPERTY_SHOW_STATUSBAR_VIEWMODE_SINGLE_CONTINUOUS))
+                    viewPanel.add(buildPageViewSinglePageConToggleButton());
+                if (PropertiesManager.checkAndStoreBooleanProperty(propertiesManager,
+                        PropertiesManager.PROPERTY_SHOW_STATUSBAR_VIEWMODE_DOUBLE))
+                    viewPanel.add(buildPageViewFacingPageNonConToggleButton());
+                if (PropertiesManager.checkAndStoreBooleanProperty(propertiesManager,
+                        PropertiesManager.PROPERTY_SHOW_STATUSBAR_VIEWMODE_DOUBLE_CONTINUOUS))
+                    viewPanel.add(buildPageViewFacingPageConToggleButton());
             }
             statusPanel.add(viewPanel, BorderLayout.CENTER);
             viewPanel.setLayout(new ToolbarLayout(ToolbarLayout.RIGHT, 0, 1));

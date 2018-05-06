@@ -177,6 +177,10 @@ class CMap extends Dictionary implements org.icepdf.core.pobjects.fonts.CMap {
         return false;
     }
 
+    public boolean isEmptyMapping() {
+        return false;
+    }
+
     /**
      * Start the parsing of the CMap file.  Once completed, all necessary data
      * should be captured from the CMap file.
@@ -585,13 +589,17 @@ class CMap extends Dictionary implements org.icepdf.core.pobjects.fonts.CMap {
 
     // convert to characters.
     private char[] convertToString(CharSequence s) {
-        if (s == null && s.length() % 2 != 0) {
+        if (s == null || s.length() % 2 != 0) {
             throw new IllegalArgumentException();
         }
         int len = s.length();
+        if (len == 1) {
+            return new char[]{s.charAt(0)};
+        }
         char[] dest = new char[len / 2];
-        for (int i = 0, j = 0; i < len; i += 2, j++)
+        for (int i = 0, j = 0; i < len; i += 2, j++) {
             dest[j] = (char) ((s.charAt(i) << 8) | s.charAt(i + 1));
+        }
         return dest;
     }
 }

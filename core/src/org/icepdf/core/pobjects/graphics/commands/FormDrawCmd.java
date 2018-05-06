@@ -45,11 +45,17 @@ public class FormDrawCmd extends AbstractDrawCmd {
 
     private static boolean disableXObjectSMask;
 
+    // Used to use Max_value but we have a few corner cases where the dimension is +-5 of Short.MAX_VALUE, but
+    // realistically we seldom have enough memory to load anythign bigger then 8000px.  4k+ image are big!
+    private static int MAX_IMAGE_SIZE = 17000; // Short.MAX_VALUE
+
     static {
         // decide if large images will be scaled
         disableXObjectSMask =
                 Defs.sysPropertyBoolean("org.icepdf.core.disableXObjectSMask",
                         false);
+
+        MAX_IMAGE_SIZE = Defs.sysPropertyInt("org.icepdf.core.maxSmaskImageSize", 17000);
     }
 
     public FormDrawCmd(Form xForm) {
@@ -132,7 +138,7 @@ public class FormDrawCmd extends AbstractDrawCmd {
                     if (softMask != null && softMask.getS().equals(SoftMask.SOFT_MASK_TYPE_ALPHA)) {
                         logger.warning("Smask alpha example, currently not supported.");
                     } else if (softMask != null && softMask.getS().equals(SoftMask.SOFT_MASK_TYPE_LUMINOSITY)) {
-                        xFormBuffer = applyMask(parentPage, xFormBuffer, softMask, formSoftMask != null, g.getRenderingHints());
+                        xFormBuffer = applyMask(parentPage, xFormBuffer, softMask, formSoftMask, g.getRenderingHints());
                     }
                 } else if (softMask != null) {
                     // still not property aligning the form or mask space to correctly apply a shading pattern.
@@ -144,7 +150,7 @@ public class FormDrawCmd extends AbstractDrawCmd {
                 }
                 // apply the form mask to current form content that has been rasterized to xFormBuffer
                 if (formSoftMask != null) {
-                    BufferedImage formSMaskBuffer = applyMask(parentPage, xFormBuffer, formSoftMask, softMask != null,
+                    BufferedImage formSMaskBuffer = applyMask(parentPage, xFormBuffer, formSoftMask, softMask,
                             g.getRenderingHints());
                     // compost all the images.
                     if (softMask != null) {
@@ -174,7 +180,7 @@ public class FormDrawCmd extends AbstractDrawCmd {
         return currentShape;
     }
 
-    private BufferedImage applyMask(Page parentPage, BufferedImage xFormBuffer, SoftMask softMask, boolean useLuminosity,
+    private BufferedImage applyMask(Page parentPage, BufferedImage xFormBuffer, SoftMask softMask, SoftMask gsSoftMask,
                                     RenderingHints renderingHints) {
         if (softMask != null && softMask.getS().equals(SoftMask.SOFT_MASK_TYPE_ALPHA)) {
             logger.warning("Smask alpha example, currently not supported.");
@@ -182,10 +188,10 @@ public class FormDrawCmd extends AbstractDrawCmd {
             BufferedImage sMaskBuffer = createBufferXObject(parentPage, softMask.getG(), softMask, renderingHints, true);
 //            ImageUtility.displayImage(xFormBuffer, "base " + xForm.getPObjectReference() + " " + xFormBuffer.getHeight() + " x " + xFormBuffer.getHeight());
 //            ImageUtility.displayImage(sMaskBuffer, "smask " + softMask.getG().getPObjectReference() + " " + useLuminosity);
-            if (!useLuminosity) {
+            if (!(gsSoftMask != null)) {
                 xFormBuffer = ImageUtility.applyExplicitSMask(xFormBuffer, sMaskBuffer);
             } else {
-                // todo try and figure out how to apply an AIS=false alpha to an xoject.
+                // todo try and figure out how to apply an AIS=false alpha to an xobject.
 //                xFormBuffer = ImageUtility.applyExplicitLuminosity(xFormBuffer, sMaskBuffer);
                 xFormBuffer = ImageUtility.applyExplicitOutline(xFormBuffer, sMaskBuffer);
             }
@@ -217,12 +223,12 @@ public class FormDrawCmd extends AbstractDrawCmd {
         // corner cases where some bBoxes don't have a dimension.
         if (width == 0) {
             width = 1;
-        } else if (width >= Short.MAX_VALUE) {
+        } else if (width >= MAX_IMAGE_SIZE) {
             width = xFormBuffer.getWidth();
         }
         if (height == 0) {
             height = 1;
-        } else if (height >= Short.MAX_VALUE) {
+        } else if (height >= MAX_IMAGE_SIZE) {
             height = xFormBuffer.getHeight();
         }
         // create the new image to write too.
@@ -266,7 +272,7 @@ public class FormDrawCmd extends AbstractDrawCmd {
                     }
                 }
                 canvas.translate(-x, -y);
-                canvas.setClip(0, 0, bi.getWidth(), bi.getHeight());
+                canvas.setClip(bBox.getBounds2D());
                 xFormShapes.paint(canvas);
                 xFormShapes.setPageParent(null);
             }

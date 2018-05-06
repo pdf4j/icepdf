@@ -75,6 +75,10 @@ public class PropertiesManager {
     public static final String PROPERTY_SHOW_STATUSBAR_STATUSLABEL = "application.statusbar.show.statuslabel";
     // properties used to hide/show status bar buttons
     public static final String PROPERTY_SHOW_STATUSBAR_VIEWMODE = "application.statusbar.show.viewmode";
+    public static final String PROPERTY_SHOW_STATUSBAR_VIEWMODE_SINGLE = "application.statusbar.show.viewmode.singlePage";
+    public static final String PROPERTY_SHOW_STATUSBAR_VIEWMODE_SINGLE_CONTINUOUS = "application.statusbar.show.viewmode.singlePageContinuous";
+    public static final String PROPERTY_SHOW_STATUSBAR_VIEWMODE_DOUBLE = "application.statusbar.show.viewmode.doublePage";
+    public static final String PROPERTY_SHOW_STATUSBAR_VIEWMODE_DOUBLE_CONTINUOUS = "application.statusbar.show.viewmode.doublePageContinuous";
     // properties used to hide/show the utility buttons (open, print, etc.)
     public static final String PROPERTY_SHOW_UTILITY_OPEN = "application.toolbar.show.utility.open";
     public static final String PROPERTY_SHOW_UTILITY_SAVE = "application.toolbar.show.utility.save";
@@ -102,6 +106,26 @@ public class PropertiesManager {
     public static final String PROPERTY_VIEWPREF_HIDEMENUBAR = "application.viewerpreferences.hidemenubar";
     public static final String PROPERTY_VIEWPREF_FITWINDOW = "application.viewerpreferences.fitwindow";
     public static final String PROPERTY_VIEWPREF_FORM_HIGHLIGHT = "application.viewerpreferences.form.highlight";
+
+    // properties used to control visibility of annotation controls on main utility panel.
+    public static final String PROPERTY_SHOW_UTILITY_ANNOTATION_HIGHLIGHT = "application.toolbar.annotation.show.highlight";
+    public static final String PROPERTY_SHOW_UTILITY_ANNOTATION_UNDERLINE = "application.toolbar.annotation.show.underline";
+    public static final String PROPERTY_SHOW_UTILITY_ANNOTATION_STRIKE_OUT = "application.toolbar.annotation.show.strikeOut";
+    public static final String PROPERTY_SHOW_UTILITY_ANNOTATION_LINE = "application.toolbar.annotation.show.line";
+    public static final String PROPERTY_SHOW_UTILITY_ANNOTATION_LINK = "application.toolbar.annotation.show.link";
+    public static final String PROPERTY_SHOW_UTILITY_ANNOTATION_ARROW = "application.toolbar.annotation.show.arrow";
+    public static final String PROPERTY_SHOW_UTILITY_ANNOTATION_RECTANGLE = "application.toolbar.annotation.show.rectangle";
+    public static final String PROPERTY_SHOW_UTILITY_ANNOTATION_CIRCLE = "application.toolbar.annotation.show.circle";
+    public static final String PROPERTY_SHOW_UTILITY_ANNOTATION_INK = "application.toolbar.annotation.show.ink";
+    public static final String PROPERTY_SHOW_UTILITY_ANNOTATION_FREE_TEXT = "application.toolbar.annotation.show.freeText";
+    public static final String PROPERTY_SHOW_UTILITY_ANNOTATION_TEXT = "application.toolbar.annotation.show.text";
+    // Individual controls for the annotation toolbar button commands
+    public static final String PROPERTY_SHOW_TOOLBAR_ANNOTATION_SELECTION = "application.toolbar.show.annotation.selection";
+    public static final String PROPERTY_SHOW_TOOLBAR_ANNOTATION_HIGHLIGHT = "application.toolbar.show.annotation.highlight";
+    public static final String PROPERTY_SHOW_TOOLBAR_ANNOTATION_TEXT = "application.toolbar.show.annotation.text";
+    // Individual control of the markup annotation context menu
+    public static final String PROPERTY_SHOW_ANNOTATION_MARKUP_REPLY_TO = "application.annotation.show.markup.replyTo";
+    public static final String PROPERTY_SHOW_ANNOTATION_MARKUP_SET_STATUS = "application.annotation.show.markup.setStatus";
 
     //the version name, used in about dialog and start-up message
     String versionName = Document.getLibraryVersion();

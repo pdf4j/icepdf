@@ -198,31 +198,35 @@ public abstract class AbstractContentParser implements ContentParser {
 
     protected static void consume_rg(GraphicsState graphicState, Stack stack,
                                      Library library) {
-        float b = ((Number) stack.pop()).floatValue();
-        float gg = ((Number) stack.pop()).floatValue();
-        float r = ((Number) stack.pop()).floatValue();
-        b = Math.max(0.0f, Math.min(1.0f, b));
-        gg = Math.max(0.0f, Math.min(1.0f, gg));
-        r = Math.max(0.0f, Math.min(1.0f, r));
-        // set fill colour
-        graphicState.setFillColorSpace(
-                PColorSpace.getColorSpace(library, DeviceRGB.DEVICERGB_KEY));
-        graphicState.setFillColor(new Color(r, gg, b));
+        if (stack.size() >= 3) {
+            float b = ((Number) stack.pop()).floatValue();
+            float gg = ((Number) stack.pop()).floatValue();
+            float r = ((Number) stack.pop()).floatValue();
+            b = Math.max(0.0f, Math.min(1.0f, b));
+            gg = Math.max(0.0f, Math.min(1.0f, gg));
+            r = Math.max(0.0f, Math.min(1.0f, r));
+            // set fill colour
+            graphicState.setFillColorSpace(
+                    PColorSpace.getColorSpace(library, DeviceRGB.DEVICERGB_KEY));
+            graphicState.setFillColor(new Color(r, gg, b));
+        }
     }
 
     protected static void consume_K(GraphicsState graphicState, Stack stack,
                                     Library library) {
-        float k = ((Number) stack.pop()).floatValue();
-        float y = ((Number) stack.pop()).floatValue();
-        float m = ((Number) stack.pop()).floatValue();
-        float c = ((Number) stack.pop()).floatValue();
+        if (stack.size() >= 4) {
+            float k = ((Number) stack.pop()).floatValue();
+            float y = ((Number) stack.pop()).floatValue();
+            float m = ((Number) stack.pop()).floatValue();
+            float c = ((Number) stack.pop()).floatValue();
 
-        PColorSpace pColorSpace =
-                PColorSpace.getColorSpace(library, DeviceCMYK.DEVICECMYK_KEY);
-        // set stroke colour
-        graphicState.setStrokeColorSpace(pColorSpace);
-        graphicState.setStrokeColor(pColorSpace.getColor(
-                new float[]{k, y, m, c}, true));
+            PColorSpace pColorSpace =
+                    PColorSpace.getColorSpace(library, DeviceCMYK.DEVICECMYK_KEY);
+            // set stroke colour
+            graphicState.setStrokeColorSpace(pColorSpace);
+            graphicState.setStrokeColor(pColorSpace.getColor(
+                    new float[]{k, y, m, c}, true));
+        }
     }
 
     protected static void consume_k(GraphicsState graphicState, Stack stack,
@@ -475,7 +479,9 @@ public abstract class AbstractContentParser implements ContentParser {
     }
 
     protected static void consume_i(Stack stack) {
-        stack.pop();
+        if (stack.size() >= 1) {
+            stack.pop();
+        }
     }
 
     protected static void consume_J(GraphicsState graphicState, Stack stack, Shapes shapes) {
@@ -660,8 +666,8 @@ public abstract class AbstractContentParser implements ContentParser {
                             new AffineTransform(graphicState.getCTM());
                     graphicState.scale(1, -1);
                     graphicState.translate(0, -1);
-//                    setAlpha(shapes, graphicState, graphicState.getAlphaRule(),
-//                            graphicState.getFillAlpha());
+                    setAlpha(shapes, graphicState, graphicState.getAlphaRule(),
+                            graphicState.getFillAlpha());
                     // add the image
                     shapes.add(new ImageDrawCmd(imageReference));
                     graphicState.set(af);
@@ -686,19 +692,18 @@ public abstract class AbstractContentParser implements ContentParser {
                 final int sz = dashVector.size();
                 dashArray = new float[sz];
                 Object tmp;
+                boolean nullArray = false;
                 for (int i = 0; i < sz; i++) {
                     tmp = dashVector.get(i);
                     float dash;
                     if (tmp != null && tmp instanceof Number) {
                         dash = Math.abs(((Number) dashVector.get(i)).floatValue());
-                        // java has a hard time with painting dash array with values < 1.
-                        // we have a few examples where converting the value to user space
-                        // correct the problem PDF-966.
-                        if (dash < 0.5f){
-                            dash = dash * 1000;
+                        // java has a hard time with painting dash array with values < 0.05.
+                        // null the dash array as we can't pain it PDF-966.
+                        if (dash < 0.05f) {
+                            nullArray = true;
                         }
-                        dashArray[i] = Math.round(dash);
-
+                        dashArray[i] = dash;
                     }
                 }
                 // corner case check to see if the dash array contains a first element
@@ -708,6 +713,10 @@ public abstract class AbstractContentParser implements ContentParser {
                 if (dashArray.length > 1 && dashArray[0] != 0 &&
                         dashArray[0] < dashArray[1] / 10000) {
                     dashArray[0] = dashArray[1];
+                }
+                // null the dash array if one of the dash values was less then 0.05.
+                if (nullArray) {
+                    dashArray = null;
                 }
             }
             // default to standard black line
@@ -774,15 +783,16 @@ public abstract class AbstractContentParser implements ContentParser {
             if (extGState != null) {
                 graphicState.concatenate(extGState);
             }
+            float alpha = graphicState.getFillAlpha();
             if (graphicState.getExtGState() != null
                     && graphicState.getExtGState().getBlendingMode() != null // && graphicState.getExtGState().getOverprintMode() == 1
                     ) {
-                float alpha = graphicState.getExtGState().getNonStrokingAlphConstant();
-                shapes.add(new BlendCompositeDrawCmd(graphicState.getExtGState().getBlendingMode(),
-                        alpha));
-            }else{
-                setAlpha(shapes, graphicState, graphicState.getAlphaRule(), graphicState.getFillAlpha());
+                // BlendComposite is still having trouble with alpha values < 1.0.
+                shapes.add(new BlendCompositeDrawCmd(graphicState.getExtGState().getBlendingMode(), alpha));
             }
+            // apply the alpha as it's own composite
+            if (alpha > 0 && alpha < 1.0)
+                setAlpha(shapes, graphicState, graphicState.getAlphaRule(), graphicState.getFillAlpha());
         }
     }
 
@@ -790,7 +800,8 @@ public abstract class AbstractContentParser implements ContentParser {
         float size = ((Number) stack.pop()).floatValue();
         Name name2 = (Name) stack.pop();
         // build the new font and initialize it.
-
+        graphicState.getTextState().tsize = size;
+        graphicState.getTextState().fontName = name2;
         graphicState.getTextState().font = resources.getFont(name2);
         // in the rare case that the font can't be found then we try and build
         // one so the document can be rendered in some shape or form.
@@ -809,6 +820,10 @@ public abstract class AbstractContentParser implements ContentParser {
                 Resources res = page.getResources();
                 // try and get a font off the first page.
                 Object pageFonts = res.getEntries().get(Resources.FONT_KEY);
+                // check for an indirect reference
+                if (pageFonts instanceof Reference) {
+                    pageFonts = resources.getLibrary().getObject((Reference) pageFonts);
+                }
                 if (pageFonts instanceof HashMap) {
                     // get first font
                     Reference fontRef = (Reference) ((HashMap) pageFonts).get(name2);
@@ -1029,9 +1044,11 @@ public abstract class AbstractContentParser implements ContentParser {
         if (geometricPath == null) {
             geometricPath = new GeneralPath();
         }
-        float y = ((Number) stack.pop()).floatValue();
-        float x = ((Number) stack.pop()).floatValue();
-        geometricPath.moveTo(x, y);
+        if (stack.size() >= 2) {
+            float y = ((Number) stack.pop()).floatValue();
+            float x = ((Number) stack.pop()).floatValue();
+            geometricPath.moveTo(x, y);
+        }
         return geometricPath;
     }
 
@@ -1684,8 +1701,12 @@ public abstract class AbstractContentParser implements ContentParser {
 
         // set the line width for the glyph
         float lineWidth = graphicState.getLineWidth();
-        lineWidth /= textState.tmatrix.getScaleX();
-        graphicState.setLineWidth(lineWidth);
+        double scale = textState.tmatrix.getScaleX();
+        // double check for a near zero value as it will really mess up the division result, zero is just fine.
+        if (scale > 0.0001 || scale == 0) {
+            lineWidth /= scale;
+            graphicState.setLineWidth(lineWidth);
+        }
         // update the stroke and add the text to shapes
         setStroke(shapes, graphicState);
         shapes.add(new ColorDrawCmd(graphicState.getFillColor()));

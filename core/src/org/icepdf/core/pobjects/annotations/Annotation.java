@@ -24,6 +24,7 @@ import org.icepdf.core.pobjects.graphics.Shapes;
 import org.icepdf.core.pobjects.security.SecurityManager;
 import org.icepdf.core.util.GraphicsRenderingHints;
 import org.icepdf.core.util.Library;
+import org.icepdf.core.util.Utils;
 
 import java.awt.*;
 import java.awt.geom.*;
@@ -628,7 +629,7 @@ public abstract class Annotation extends Dictionary {
 
         securityManager = library.getSecurityManager();
 
-        content = library.getString(entries, CONTENTS_KEY);
+        content = getContents();
 
         // no borders for the following types,  not really in the
         // spec for some reason, Acrobat doesn't render them.
@@ -1218,6 +1219,7 @@ public abstract class Annotation extends Dictionary {
 
         AffineTransform oldAT = origG.getTransform();
         Shape oldClip = origG.getClip();
+        Composite oldComp = origG.getComposite();
 
         // Simply uncomment the //// lines to use a different Graphics object
         Graphics2D g = origG;
@@ -1282,6 +1284,7 @@ public abstract class Annotation extends Dictionary {
 
         g.setTransform(oldAT);
         g.setClip(oldClip);
+        g.setComposite(oldComp);
 
         ////g.dispose();
 
@@ -1671,7 +1674,7 @@ public abstract class Annotation extends Dictionary {
     }
 
     public void setModifiedDate(String modifiedDate) {
-        entries.put(M_KEY, new LiteralStringObject(modifiedDate));
+        setString(M_KEY, modifiedDate);
         this.modifiedDate = new PDate(securityManager, modifiedDate);
     }
 
@@ -1739,12 +1742,30 @@ public abstract class Annotation extends Dictionary {
 
 
     public String getContents() {
+        content = getString(CONTENTS_KEY);
         return content;
     }
 
     public void setContents(String content) {
-        this.content = content;
-        entries.put(CONTENTS_KEY, new LiteralStringObject(content));
+        this.content = setString(CONTENTS_KEY, content);
+    }
+
+    /**
+     * Gets a known string value from the annotation dictionary,  decryption will be applied as needed.
+     *
+     * @param key dictionary key value to fine.
+     * @return value of key if any,  empty string if null;
+     */
+    protected String getString(final Name key) {
+        Object value = library.getObject(entries, key);
+        if (value instanceof StringObject) {
+            StringObject text = (StringObject) value;
+            return Utils.convertStringObject(library, text);
+        } else if (value instanceof String) {
+            return (String) value;
+        } else {
+            return "";
+        }
     }
 
     public String toString() {

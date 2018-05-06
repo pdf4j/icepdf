@@ -19,7 +19,6 @@ import org.icepdf.core.events.*;
 import org.icepdf.core.io.SeekableInput;
 import org.icepdf.core.pobjects.annotations.Annotation;
 import org.icepdf.core.pobjects.annotations.FreeTextAnnotation;
-import org.icepdf.core.pobjects.graphics.BlendComposite;
 import org.icepdf.core.pobjects.graphics.Shapes;
 import org.icepdf.core.pobjects.graphics.WatermarkCallback;
 import org.icepdf.core.pobjects.graphics.text.GlyphText;
@@ -241,7 +240,7 @@ public class Page extends Dictionary {
         }
     }
 
-    private void initPageResources() throws InterruptedException {
+    public void initPageResources() throws InterruptedException {
         Resources res = library.getResources(entries, RESOURCES_KEY);
         PageTree pageTree;
         if (res == null) {
@@ -950,12 +949,12 @@ public class Page extends Dictionary {
 
         StateManager stateManager = library.getStateManager();
         // if we are doing an update we have at least on annot
-        List<Reference> annotations = (List)
+        List<Object> annotations = (List)
                 library.getObject(entries, ANNOTS_KEY);
 
         // make sure annotations is in part of page.
         boolean found = false;
-        for (Reference ref : annotations) {
+        for (Object ref : annotations) {
             if (ref.equals(annotation.getPObjectReference())) {
                 found = true;
                 break;
@@ -1174,7 +1173,8 @@ public class Page extends Dictionary {
     }
 
     /**
-     * Utility method for applying the page boundary rules.
+     * Utility method for applying the page boundary rules. If no matching specifiedBox type is found then
+     * the BOUNDARY_CROPBOX bound will be returned.
      *
      * @param specifiedBox page boundary constant
      * @return bounds of page after the chain of rules have been applied.
@@ -1203,7 +1203,7 @@ public class Page extends Dictionary {
         }
         // encase of bad usage, default to crop box
         else {
-            userSpecifiedBox = (PRectangle) getMediaBox();
+            userSpecifiedBox = (PRectangle) getCropBox();
         }
 
         // just in case, make sure we return a non null boundary, and the

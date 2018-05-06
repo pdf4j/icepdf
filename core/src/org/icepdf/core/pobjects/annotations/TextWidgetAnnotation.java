@@ -19,6 +19,7 @@ package org.icepdf.core.pobjects.annotations;
 import org.icepdf.core.pobjects.*;
 import org.icepdf.core.pobjects.acroform.FieldDictionary;
 import org.icepdf.core.pobjects.acroform.TextFieldDictionary;
+import org.icepdf.core.pobjects.acroform.VariableTextFieldDictionary;
 import org.icepdf.core.pobjects.fonts.FontFile;
 import org.icepdf.core.pobjects.fonts.FontManager;
 import org.icepdf.core.util.Library;
@@ -47,7 +48,10 @@ public class TextWidgetAnnotation extends AbstractWidgetAnnotation<TextFieldDict
     public TextWidgetAnnotation(Library l, HashMap h) {
         super(l, h);
         fieldDictionary = new TextFieldDictionary(library, entries);
-        fontFile = FontManager.getInstance().initialize().getInstance(fieldDictionary.getFontName(), 0);
+        fontFile = fieldDictionary.getFont() != null ? fieldDictionary.getFont().getFont() : null;
+        if (fontFile == null) {
+            FontManager.getInstance().initialize().getInstance(fieldDictionary.getFontName().toString(), 0);
+        }
     }
 
     public void resetAppearanceStream(double dx, double dy, AffineTransform pageTransform) {
@@ -88,9 +92,13 @@ public class TextWidgetAnnotation extends AbstractWidgetAnnotation<TextFieldDict
                         (float) bbox.getWidth(), (float) bbox.getHeight());
                 appearanceStream.setAppearance(null, matrix, formBbox);
                 // add link to resources on forum, if no resources exist.
-                if (library.getResources(appearanceStream.getEntries(), Form.RESOURCES_KEY) == null) {
+                if (library.getResources(appearanceStream.getEntries(), Form.RESOURCES_KEY) == null &&
+                        library.getCatalog().getInteractiveForm().getResources() != null) {
                     appearanceStream.getEntries().put(Form.RESOURCES_KEY,
                             library.getCatalog().getInteractiveForm().getResources().getEntries());
+                }else{
+                    // need to find some resources, try adding the parent page.
+                    appearanceStream.getEntries().put(Form.RESOURCES_KEY, getPage().getResources().getEntries());
                 }
                 // add the annotation as changed as T entry has also been updated to reflect teh changed content.
                 stateManager.addChange(new PObject(this, this.getPObjectReference()));
@@ -127,7 +135,7 @@ public class TextWidgetAnnotation extends AbstractWidgetAnnotation<TextFieldDict
             // marked content which we will use to try and find some data points.
             markedContent = currentContentStream.substring(btStart, etEnd);
         } else {
-            preBt = currentContentStream + " /Tx BMC q BT ";
+            preBt = "/Tx BMC q BT ";
             postEt = " ET Q EMC ";
         }
 
@@ -144,22 +152,25 @@ public class TextWidgetAnnotation extends AbstractWidgetAnnotation<TextFieldDict
         double lineHeight = getLineHeight(fieldDictionary.getDefaultAppearance());
 
         // apply the default appearance.
-        content.append(generateDefaultAppearance(markedContent, fieldDictionary.getDefaultAppearance()));
+        content.append(generateDefaultAppearance(markedContent, getPage().getResources(), fieldDictionary));
         if (fieldDictionary.getDefaultAppearance() == null) {
             lineHeight = getFontSize(markedContent);
         }
 
         // apply the text offset, 4 is just a generic padding.
         if (!isfourthQuadrant) {
+            double height = getBbox().getHeight();
+            double size = fieldDictionary.getSize();
             content.append(lineHeight).append(" TL ");
             // todo rework taking into account multi line height.
-            content.append(2).append(' ').append((Math.round(getBbox().getHeight() * 100) / 100)).append(" Td ");
-//            content.append(4).append(' ').append(lineHeight).append(" Td ");
+            double hOffset = Math.ceil(size + (height - size));
+            content.append(2).append(' ').append(hOffset).append(" Td ");
         } else {
             content.append(2).append(' ').append(2).append(" Td ");
         }
         // encode the text so it can be properly encoded in PDF string format
-        content = encodeLiteralString(content, contents);
+        // hex encode the text so that we better handle character codes > 127
+        content = encodeHexString(content, contents);
 
         // build the final content stream.
         currentContentStream = preBt + content + postEt;
@@ -175,7 +186,7 @@ public class TextWidgetAnnotation extends AbstractWidgetAnnotation<TextFieldDict
             // apply the default value
             fieldDictionary.setFieldValue(fieldDictionary.getDefaultFieldValue(), getPObjectReference());
             changeSupport.firePropertyChange("valueFieldReset", oldValue, fieldDictionary.getFieldValue());
-        }else{
+        } else {
             // otherwise we remove the key
             fieldDictionary.getEntries().remove(FieldDictionary.V_KEY);
             fieldDictionary.setFieldValue("", getPObjectReference());
@@ -188,27 +199,11 @@ public class TextWidgetAnnotation extends AbstractWidgetAnnotation<TextFieldDict
         return fieldDictionary;
     }
 
-    public String generateDefaultAppearance(String content, String defaultAppearance) {
-        String appearanceText;
-        if (defaultAppearance != null &&
-                checkAppearance(defaultAppearance)) {
-            appearanceText = defaultAppearance + ' ';
-        } else { // common font and colour layout for most form elements.
-            // try and find text size
-            String fontName = "/Helv";
-            double size = getFontSize(content);
-            // try and find the font name.
-//            if (defaultAppearance != null) {
-//                StringTokenizer toker = new StringTokenizer(defaultAppearance);
-//                String tmp = toker.nextToken();
-//                if (tmp != null && tmp.startsWith("/")) {
-//                    fontName = tmp;
-//                }
-//            }
-            fieldDictionary.setSize((int)size);
-            fieldDictionary.setFontName(fontName);
-            appearanceText = fontName + " " + size + " Tf 0 g ";
+    public String generateDefaultAppearance(String content, Resources resources,
+                                            VariableTextFieldDictionary variableTextFieldDictionary) {
+        if (variableTextFieldDictionary != null) {
+            return variableTextFieldDictionary.generateDefaultAppearance(content, resources);
         }
-        return appearanceText;
+        return null;
     }
 }

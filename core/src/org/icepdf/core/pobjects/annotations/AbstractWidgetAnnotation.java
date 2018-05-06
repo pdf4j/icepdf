@@ -45,7 +45,7 @@ public abstract class AbstractWidgetAnnotation<T extends FieldDictionary> extend
      */
     public static final Name HIGHLIGHT_NONE = new Name("N");
 
-    private static final Logger logger =
+    protected static final Logger logger =
             Logger.getLogger(AbstractWidgetAnnotation.class.toString());
 
     /**
@@ -97,8 +97,9 @@ public abstract class AbstractWidgetAnnotation<T extends FieldDictionary> extend
             } else if (LinkAnnotation.HIGHLIGHT_PUSH.equals(name.getName())) {
                 highlightMode = LinkAnnotation.HIGHLIGHT_PUSH;
             }
+        } else {
+            highlightMode = LinkAnnotation.HIGHLIGHT_INVERT;
         }
-        highlightMode = LinkAnnotation.HIGHLIGHT_INVERT;
 
     }
 
@@ -208,11 +209,11 @@ public abstract class AbstractWidgetAnnotation<T extends FieldDictionary> extend
         return 13.87;
     }
 
-    protected double getFontSize(String content){
+    protected double getFontSize(String content) {
         // try and find text size
         double size = 12;
 
-        if (content != null){
+        if (content != null) {
             Pattern pattern = Pattern.compile("\\d+(\\.\\d+)?\\s+Tf");
             Matcher matcher = pattern.matcher(content);
             if (matcher.find()) {
@@ -231,10 +232,39 @@ public abstract class AbstractWidgetAnnotation<T extends FieldDictionary> extend
         return size;
     }
 
+    /**
+     * Encodes the given cotents string into a valid postscript string that is literal encoded.
+     *
+     * @param content  current content stream to append literal string to.
+     * @param contents string to be encoded into '(...)' literal format.
+     * @return original content stream with contents encoded in the literal string format.
+     */
     protected StringBuilder encodeLiteralString(StringBuilder content, String contents) {
         String[] lines = contents.split("\n|\r|\f");
         for (String line : lines) {
-            content.append('(').append(line.replaceAll("(?=[()\\\\])", "\\\\")).append(")' ");
+            content.append('(').append(line.replaceAll("(?=[()\\\\])", "\\\\")
+                    .replaceAll("ÿ", "")).append(")' ");
+        }
+        return content;
+    }
+
+    /**
+     * Encodes the given contents string into a valid postscript hex string.
+     *
+     * @param content  current content stream to append literal string to.
+     * @param contents string to be encoded into '<...></...>' hex format.
+     * @return original content stream with contents encoded in the hex string format.
+     */
+    protected StringBuilder encodeHexString(StringBuilder content, String contents) {
+        String[] lines = contents.split("\n|\r|\f");
+        for (String line : lines) {
+            char[] chars = line.toCharArray();
+            StringBuffer hex = new StringBuffer();
+//            hex.append("FEFF");
+            for (int i = 0; i < chars.length; i++) {
+                hex.append(Integer.toHexString((int) chars[i]));
+            }
+            content.append('<').append(hex).append(">' ");
         }
         return content;
     }
@@ -254,8 +284,11 @@ public abstract class AbstractWidgetAnnotation<T extends FieldDictionary> extend
             String fontSize = toker.nextToken();
             Appearance appearance1 = appearances.get(currentAppearance);
             AppearanceState appearanceState = appearance1.getSelectedAppearanceState();
+            org.icepdf.core.pobjects.fonts.Font font = null;
             Resources resources = appearanceState.getResources();
-            org.icepdf.core.pobjects.fonts.Font font = resources.getFont(new Name(fontName));
+            if (resources != null) {
+                font = resources.getFont(new Name(fontName));
+            }
             return !(font == null || library.getInteractiveFormFont(fontName) == null ||
                     fontSize.equals("0"));
         }
@@ -352,6 +385,7 @@ public abstract class AbstractWidgetAnnotation<T extends FieldDictionary> extend
 
     /**
      * Is enable highlight enabled.
+     *
      * @return return true if highlight is enabled, false otherwise.
      */
     public boolean isEnableHighlightedWidget() {

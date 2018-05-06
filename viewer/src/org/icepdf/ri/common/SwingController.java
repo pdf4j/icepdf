@@ -15,6 +15,7 @@
  */
 package org.icepdf.ri.common;
 
+import org.icepdf.core.SecurityCallback;
 import org.icepdf.core.exceptions.PDFException;
 import org.icepdf.core.exceptions.PDFSecurityException;
 import org.icepdf.core.io.SizeInputStream;
@@ -28,6 +29,7 @@ import org.icepdf.core.search.DocumentSearchController;
 import org.icepdf.core.util.Library;
 import org.icepdf.core.util.PropertyConstants;
 import org.icepdf.core.util.Utils;
+import org.icepdf.ri.common.fonts.FontDialog;
 import org.icepdf.ri.common.search.DocumentSearchControllerImpl;
 import org.icepdf.ri.common.utility.annotation.AnnotationPanel;
 import org.icepdf.ri.common.utility.layers.LayersPanel;
@@ -112,6 +114,7 @@ public class SwingController
     private JMenuItem exportSVGMenuItem;
     private JMenuItem permissionsMenuItem;
     private JMenuItem informationMenuItem;
+    private JMenuItem fontInformationMenuItem;
     private JMenuItem printSetupMenuItem;
     private JMenuItem printMenuItem;
     private JMenuItem exitMenuItem;
@@ -254,7 +257,7 @@ public class SwingController
      * @param documentViewController new document controller.
      */
     public void setDocumentViewController(DocumentViewControllerImpl documentViewController) {
-        if (this.documentViewController != null){
+        if (this.documentViewController != null) {
             this.documentViewController.removePropertyChangeListener(this);
         }
         this.documentViewController = documentViewController;
@@ -320,6 +323,13 @@ public class SwingController
     }
 
     /**
+     * Gets an instance of the PropertiesManager so that other builders can use the properties manager.
+     */
+    public PropertiesManager getPropertiesManager() {
+        return propertiesManager;
+    }
+
+    /**
      * Called by SwingViewerBuilder, so that SwingController can setup event handling
      */
     public void setOpenFileMenuItem(JMenuItem mi) {
@@ -380,6 +390,14 @@ public class SwingController
      */
     public void setInformationMenuItem(JMenuItem mi) {
         informationMenuItem = mi;
+        mi.addActionListener(this);
+    }
+
+    /**
+     * Called by SwingViewerBuilder, so that SwingController can setup event handling
+     */
+    public void setFontInformationMenuItem(JMenuItem mi) {
+        fontInformationMenuItem = mi;
         mi.addActionListener(this);
     }
 
@@ -1093,6 +1111,7 @@ public class SwingController
         setEnabled(exportSVGMenuItem, opened && canPrint && !pdfCollection);
         setEnabled(permissionsMenuItem, opened);
         setEnabled(informationMenuItem, opened);
+        setEnabled(fontInformationMenuItem, opened);
         // Printer setup is global to all PDFs, so don't limit it by this one PDF
         setEnabled(printSetupMenuItem, opened && canPrint && !pdfCollection);
         setEnabled(printMenuItem, opened && canPrint && !pdfCollection);
@@ -1751,6 +1770,22 @@ public class SwingController
         }
     }
 
+    /**
+     * Setup the security handle if specified, if not then creates and uses the default implementation.
+     *
+     * @param document         document to set securityCallback on .
+     * @param securityCallback
+     */
+    protected void setupSecurityHandler(Document document, SecurityCallback securityCallback) throws
+            PDFException, PDFSecurityException {
+        // create default security callback is user has not created one
+        if (securityCallback == null) {
+            document.setSecurityCallback(
+                    new MyGUISecurityCallback(viewer, messageBundle));
+        } else {
+            document.setSecurityCallback(documentViewController.getSecurityCallback());
+        }
+    }
 
     /**
      * Open a file specified by the given path name.
@@ -1770,12 +1805,8 @@ public class SwingController
                 // load the document
                 document = new Document();
                 // create default security callback is user has not created one
-                if (documentViewController.getSecurityCallback() == null) {
-                    document.setSecurityCallback(
-                            new MyGUISecurityCallback(viewer, messageBundle));
-                }
+                setupSecurityHandler(document, documentViewController.getSecurityCallback());
                 document.setFile(pathname);
-
                 commonNewDocumentHandling(pathname);
             } catch (PDFException e) {
                 org.icepdf.ri.util.Resources.showMessageDialog(
@@ -1887,12 +1918,6 @@ public class SwingController
 
             // load the document
             document = new Document();
-            // create default security callback is user has not created one
-            if (documentViewController.getSecurityCallback() == null) {
-                document.setSecurityCallback(
-                        new MyGUISecurityCallback(viewer, messageBundle));
-            }
-
             try {
                 // make a connection
                 final URLConnection urlConnection = location.openConnection();
@@ -1913,8 +1938,9 @@ public class SwingController
                             // Create a stream on the URL connection
                             in = new BufferedInputStream(progressMonitorInputStream);
                             String pathOrURL = location.toString();
-
                             document.setInputStream(in, pathOrURL);
+                            // create default security callback is user has not created one
+                            setupSecurityHandler(document, documentViewController.getSecurityCallback());
                             commonNewDocumentHandling(location.getPath());
                             setDisplayTool(DocumentViewModelImpl.DISPLAY_TOOL_PAN);
                         } catch (IOException ex) {
@@ -2005,10 +2031,7 @@ public class SwingController
                 // load the document
                 document = new Document();
                 // create default security callback is user has not created one
-                if (documentViewController.getSecurityCallback() == null) {
-                    document.setSecurityCallback(
-                            new MyGUISecurityCallback(viewer, messageBundle));
-                }
+                setupSecurityHandler(document, documentViewController.getSecurityCallback());
                 document.setInputStream(inputStream, pathOrURL);
 
                 commonNewDocumentHandling(description);
@@ -2067,10 +2090,7 @@ public class SwingController
                 // load the document
                 document = embeddedDocument;
                 // create default security callback is user has not created one
-                if (documentViewController.getSecurityCallback() == null) {
-                    document.setSecurityCallback(
-                            new MyGUISecurityCallback(viewer, messageBundle));
-                }
+                setupSecurityHandler(document, documentViewController.getSecurityCallback());
                 commonNewDocumentHandling(fileName);
             } catch (Exception e) {
                 org.icepdf.ri.util.Resources.showMessageDialog(
@@ -2113,10 +2133,7 @@ public class SwingController
                 // load the document
                 document = new Document();
                 // create default security callback is user has not created one
-                if (documentViewController.getSecurityCallback() == null) {
-                    document.setSecurityCallback(
-                            new MyGUISecurityCallback(viewer, messageBundle));
-                }
+                setupSecurityHandler(document, documentViewController.getSecurityCallback());
                 document.setByteArray(data, offset, length, pathOrURL);
 
                 commonNewDocumentHandling(description);
@@ -3961,6 +3978,8 @@ public class SwingController
                 SwingUtilities.invokeLater(doSwingWork);
             } else if (source == aboutMenuItem) {
                 showAboutDialog();
+            } else if (source == fontInformationMenuItem) {
+                new FontDialog(viewer, this, true).setVisible(true);
             } else if (document != null) {
                 // get document previous icon
                 int documentIcon = getDocumentViewToolMode();
