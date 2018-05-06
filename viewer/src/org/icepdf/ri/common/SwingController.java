@@ -91,7 +91,7 @@ public class SwingController
         TreeSelectionListener, WindowListener, DropTargetListener,
         KeyListener, PropertyChangeListener {
 
-    private static final Logger logger =
+    protected static final Logger logger =
             Logger.getLogger(SwingController.class.toString());
 
     public static final int CURSOR_OPEN_HAND = 1;
@@ -102,7 +102,7 @@ public class SwingController
     public static final int CURSOR_SELECT = 7;
     public static final int CURSOR_DEFAULT = 8;
 
-    private static final int MAX_SELECT_ALL_PAGE_COUNT = 250;
+    protected static final int MAX_SELECT_ALL_PAGE_COUNT = 250;
 
     private JMenuItem openFileMenuItem;
     private JMenuItem openURLMenuItem;
@@ -199,25 +199,25 @@ public class SwingController
     private int utilityAndDocumentSplitPaneLastDividerLocation;
     private JLabel statusLabel;
     private JFrame viewer;
-    private WindowManagementCallback windowManagementCallback;
+    protected WindowManagementCallback windowManagementCallback;
     // simple model for swing controller, mainly printer and  file loading state.
-    private ViewModel viewModel;
+    protected ViewModel viewModel;
     // subcontroller for document view or document page views.
-    private DocumentViewControllerImpl documentViewController;
+    protected DocumentViewControllerImpl documentViewController;
 
     // subcontroller for document text searching.
-    private DocumentSearchController documentSearchController;
+    protected DocumentSearchController documentSearchController;
 
     // todo subcontroller for document annotations creation.
 
 
-    private Document document;
-    private boolean disposed;
+    protected Document document;
+    protected boolean disposed;
 
     // internationalization messages, loads message for default JVM locale.
-    private static ResourceBundle messageBundle = null;
+    protected static ResourceBundle messageBundle = null;
 
-    private PropertiesManager propertiesManager;
+    protected PropertiesManager propertiesManager;
 
     /**
      * Create a SwingController object, and its associated ViewerModel
@@ -245,6 +245,21 @@ public class SwingController
             this.messageBundle = ResourceBundle.getBundle(
                     PropertiesManager.DEFAULT_MESSAGE_BUNDLE);
         }
+    }
+
+    /**
+     * Sets a custom document view controller. Previously constructed documentView controllers are unregistered
+     * from the propertyChangeListener, the provided controller will be registered with the propertyChangeListener.
+     *
+     * @param documentViewController new document controller.
+     */
+    public void setDocumentViewController(DocumentViewControllerImpl documentViewController) {
+        if (this.documentViewController != null){
+            this.documentViewController.removePropertyChangeListener(this);
+        }
+        this.documentViewController = documentViewController;
+        // register Property change listeners, for zoom, rotation, current page changes
+        documentViewController.addPropertyChangeListener(this);
     }
 
     /**
@@ -2578,26 +2593,6 @@ public class SwingController
      * save the file to, and what name to give it.
      */
     public void saveFile() {
-        // Ensure we actually CAN save the document in the first place
-        if (!havePermissionToModifyDocument()) {
-            org.icepdf.ri.util.Resources.showMessageDialog(
-                    viewer,
-                    JOptionPane.INFORMATION_MESSAGE,
-                    messageBundle,
-                    "viewer.dialog.saveAs.noPermission.title",
-                    "viewer.dialog.saveAs.noPermission.msg");
-            return;
-        }
-
-        if (document.getStateManager().isChanged() &&
-                !Document.foundIncrementalUpdater) {
-            org.icepdf.ri.util.Resources.showMessageDialog(
-                    viewer,
-                    JOptionPane.INFORMATION_MESSAGE,
-                    messageBundle,
-                    "viewer.dialog.saveAs.noUpdates.title",
-                    "viewer.dialog.saveAs.noUpdates.msg");
-        }
 
         // Create and display a file saving dialog
         final JFileChooser fileChooser = new JFileChooser();
@@ -2683,8 +2678,24 @@ public class SwingController
                     BufferedOutputStream buf = new BufferedOutputStream(
                             fileOutputStream, 4096 * 2);
 
-                    document.saveToOutputStream(buf);
-
+                    // We want 'save as' or 'save a copy to always occur
+                    if (document.getStateManager().isChanged() &&
+                            !Document.foundIncrementalUpdater) {
+                        org.icepdf.ri.util.Resources.showMessageDialog(
+                                viewer,
+                                JOptionPane.INFORMATION_MESSAGE,
+                                messageBundle,
+                                "viewer.dialog.saveAs.noUpdates.title",
+                                "viewer.dialog.saveAs.noUpdates.msg");
+                    } else {
+                        if (!document.getStateManager().isChanged()) {
+                            // save as copy
+                            document.writeToOutputStream(buf);
+                        } else {
+                            // save as will append changes.
+                            document.saveToOutputStream(buf);
+                        }
+                    }
                     buf.flush();
                     fileOutputStream.flush();
                     buf.close();

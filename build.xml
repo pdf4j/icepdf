@@ -38,10 +38,7 @@
     <property name="src.bundle.prefix" value="${src.bundle.name}/icepdf"/>
     <property name="src.bundle.file"
               location="${dist.dir}/${src.bundle.name}.zip"/>
-			  
-	<property name="ant.build.javac.source" value="1.6"/>
-	<property name="ant.build.javac.target" value="1.6"/>
-	
+
     <propertyset id="product.info">
         <propertyref name="company"/>
         <propertyref name="product"/>

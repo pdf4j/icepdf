@@ -90,7 +90,7 @@
         <delete includeemptydirs="true" quiet="true">
             <fileset dir="${build.dir}"/>
         </delete>
-        <compile 
+        <compile
                 src.javac.excludes="org/icepdf/"/>
     </target>
 
