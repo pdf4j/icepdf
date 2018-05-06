@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2016 ICEsoft Technologies Inc.
+ * Copyright 2006-2017 ICEsoft Technologies Canada Corp.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -93,6 +93,7 @@ public class Form extends Stream {
 
     @SuppressWarnings("unchecked")
     public void setAppearance(Shapes shapes, AffineTransform matrix, Rectangle2D bbox) {
+        inited = false;
         this.shapes = shapes;
         this.matrix = matrix;
         this.bbox = bbox;
@@ -205,7 +206,7 @@ public class Form extends Stream {
 
     public Resources getResources() {
         Resources leafResources = library.getResources(entries, RESOURCES_KEY);
-        if (resources == null) {
+        if (leafResources == null) {
             leafResources = new Resources(library, new HashMap());
         }
         return leafResources;

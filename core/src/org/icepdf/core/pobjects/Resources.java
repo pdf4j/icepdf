@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2016 ICEsoft Technologies Inc.
+ * Copyright 2006-2017 ICEsoft Technologies Canada Corp.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -88,33 +88,38 @@ public class Resources extends Dictionary {
             return null;
         }
 
-        Object tmp;
-        // every resource has a color space entry and o can be tmp in it.
-        if (colorspaces != null && colorspaces.get(o) != null) {
-            tmp = colorspaces.get(o);
-            PColorSpace cs = PColorSpace.getColorSpace(library, tmp);
-            if (cs != null) {
-                cs.init();
+        try {
+            Object tmp;
+            // every resource has a color space entry and o can be tmp in it.
+            if (colorspaces != null && colorspaces.get(o) != null) {
+                tmp = colorspaces.get(o);
+                PColorSpace cs = PColorSpace.getColorSpace(library, tmp);
+                if (cs != null) {
+                    cs.init();
+                }
+                return cs;
             }
-            return cs;
-        }
-        // look for our name in the pattern dictionary
-        if (patterns != null && patterns.get(o) != null) {
-            tmp = patterns.get(o);
-            PColorSpace cs = PColorSpace.getColorSpace(library, tmp);
-            if (cs != null) {
-                cs.init();
+            // look for our name in the pattern dictionary
+            if (patterns != null && patterns.get(o) != null) {
+                tmp = patterns.get(o);
+                PColorSpace cs = PColorSpace.getColorSpace(library, tmp);
+                if (cs != null) {
+                    cs.init();
+                }
+                return cs;
             }
-            return cs;
-        }
 
-        // if its not in color spaces or pattern then its a plain old
-        // named colour space.  
-        PColorSpace cs = PColorSpace.getColorSpace(library, o);
-        if (cs != null) {
-            cs.init();
+            // if its not in color spaces or pattern then its a plain old
+            // named colour space.
+            PColorSpace cs = PColorSpace.getColorSpace(library, o);
+            if (cs != null) {
+                cs.init();
+            }
+            return cs;
+        } catch (InterruptedException e) {
+            logger.fine("Colorspace parsing was interrupted");
         }
-        return cs;
+        return null;
 
     }
 
@@ -321,12 +326,10 @@ public class Resources extends Dictionary {
                 return ShadingPattern.getShadingPattern(library, entries,
                         (HashMap) shadingDictionary);
             }
-//            else if (shadingDictionary != null && shadingDictionary instanceof Stream) {
-//                System.out.println("Found Type 6 shading pattern.... returning empty pattern data. ");
-            // todo: alter parser to take into account stream shading types...
-//                return new ShadingType6Pattern(library, null);
-//                return null;
-//            }
+            else if (shadingDictionary != null && shadingDictionary instanceof Stream) {
+                return ShadingPattern.getShadingPattern(library, null,
+                        (Stream) shadingDictionary);
+            }
         }
         return null;
     }
@@ -335,7 +338,7 @@ public class Resources extends Dictionary {
      * Returns the ExtGState object which has the specified reference name.
      *
      * @param namedReference name of ExtGState object to try and find.
-     * @return ExtGState which contains the named references ExtGState attrbutes,
+     * @return ExtGState which contains the named references ExtGState attributes,
      * if the namedReference could not be found null is returned.
      */
     public ExtGState getExtGState(Name namedReference) {
@@ -351,7 +354,6 @@ public class Resources extends Dictionary {
             }
         }
         return gsState;
-
     }
 
     /**

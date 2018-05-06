@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2016 ICEsoft Technologies Inc.
+ * Copyright 2006-2017 ICEsoft Technologies Canada Corp.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -37,10 +37,8 @@ import java.awt.*;
 import java.awt.event.MouseEvent;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.GeneralPath;
-import java.awt.geom.NoninvertibleTransformException;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.logging.Level;
 
 /**
  * HighLightAnnotationHandler tool extends TextSelectionPageHandler which
@@ -151,6 +149,9 @@ public class HighLightAnnotationHandler extends TextSelectionPageHandler {
                             tBbox);
 
             // pass outline shapes and bounds to create the highlight shapes
+            if (TextMarkupAnnotation.SUBTYPE_HIGHLIGHT.equals(highLightType)) {
+                annotation.setOpacity(TextMarkupAnnotation.HIGHLIGHT_ALPHA);
+            }
             annotation.setContents(contents != null && enableHighlightContents ? contents : highLightType.toString());
             annotation.setColor(annotation.getTextMarkupColor());
             annotation.setCreationDate(PDate.formatDateTime(new Date()));
@@ -185,51 +186,59 @@ public class HighLightAnnotationHandler extends TextSelectionPageHandler {
 
     private String getSelectedText() {
         Page currentPage = pageViewComponent.getPage();
-        return currentPage.getViewText().getSelected().toString();
+        String selectedText = null;
+        try {
+            selectedText =  currentPage.getViewText().getSelected().toString();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            logger.fine("HighLightAnnotation initialization interrupted.");
+        }
+        return selectedText;
     }
 
     private ArrayList<Shape> getSelectedTextBounds() {
         Page currentPage = pageViewComponent.getPage();
         ArrayList<Shape> highlightBounds = null;
         if (currentPage != null && currentPage.isInitiated()) {
-            PageText pageText = currentPage.getViewText();
-            if (pageText != null) {
-                // get page transformation
-                AffineTransform pageTransform = currentPage.getPageTransform(
-                        documentViewModel.getPageBoundary(),
-                        documentViewModel.getViewRotation(),
-                        documentViewModel.getViewZoom());
-                // paint the sprites
-                GeneralPath textPath;
-                ArrayList<LineText> pageLines = pageText.getPageLines();
-                if (pageLines != null) {
-                    for (LineText lineText : pageLines) {
-                        java.util.List<WordText> words = lineText.getWords();
-                        if (words != null) {
-                            for (WordText wordText : words) {
-                                // paint whole word
-                                if (wordText.isSelected() || wordText.isHighlighted()) {
-                                    textPath = new GeneralPath(wordText.getBounds());
-                                    textPath.transform(pageTransform);
-                                    // paint highlight over any selected
-                                    if (wordText.isSelected()) {
-                                        if (highlightBounds == null) {
-                                            highlightBounds = new ArrayList<Shape>();
-                                        }
-                                        highlightBounds.add(textPath.getBounds2D());
-                                    }
-
-                                }
-                                // check children
-                                else {
-                                    for (GlyphText glyph : wordText.getGlyphs()) {
-                                        if (glyph.isSelected()) {
-                                            textPath = new GeneralPath(glyph.getBounds());
-                                            textPath.transform(pageTransform);
+            try {
+                PageText pageText = currentPage.getViewText();
+                if (pageText != null) {
+                    // get page transformation
+                    AffineTransform pageTransform = currentPage.getPageTransform(
+                            documentViewModel.getPageBoundary(),
+                            documentViewModel.getViewRotation(),
+                            documentViewModel.getViewZoom());
+                    // paint the sprites
+                    GeneralPath textPath;
+                    ArrayList<LineText> pageLines = pageText.getPageLines();
+                    if (pageLines != null) {
+                        for (LineText lineText : pageLines) {
+                            java.util.List<WordText> words = lineText.getWords();
+                            if (words != null) {
+                                for (WordText wordText : words) {
+                                    // paint whole word
+                                    if (wordText.isSelected() || wordText.isHighlighted()) {
+                                        textPath = new GeneralPath(wordText.getBounds());
+                                        textPath.transform(pageTransform);
+                                        // paint highlight over any selected
+                                        if (wordText.isSelected()) {
                                             if (highlightBounds == null) {
                                                 highlightBounds = new ArrayList<Shape>();
                                             }
                                             highlightBounds.add(textPath.getBounds2D());
+                                        }
+                                    }
+                                    // check children
+                                    else {
+                                        for (GlyphText glyph : wordText.getGlyphs()) {
+                                            if (glyph.isSelected()) {
+                                                textPath = new GeneralPath(glyph.getBounds());
+                                                textPath.transform(pageTransform);
+                                                if (highlightBounds == null) {
+                                                    highlightBounds = new ArrayList<Shape>();
+                                                }
+                                                highlightBounds.add(textPath.getBounds2D());
+                                            }
                                         }
                                     }
                                 }
@@ -237,44 +246,11 @@ public class HighLightAnnotationHandler extends TextSelectionPageHandler {
                         }
                     }
                 }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                logger.fine("HighLightAnnotation selected text bounds calculation interrupted.");
             }
         }
         return highlightBounds;
-    }
-
-    /**
-     * Convert the shapes that make up the annotation to page space so that
-     * they will scale correctly at different zooms.
-     *
-     * @return transformed bBox.
-     */
-    protected Rectangle convertToPageSpace(ArrayList<Shape> bounds,
-                                           GeneralPath path) {
-        Page currentPage = pageViewComponent.getPage();
-        AffineTransform at = currentPage.getPageTransform(
-                documentViewModel.getPageBoundary(),
-                documentViewModel.getViewRotation(),
-                documentViewModel.getViewZoom());
-        try {
-            at = at.createInverse();
-        } catch (NoninvertibleTransformException e) {
-            logger.log(Level.FINE, "Error converting to page space.", e);
-        }
-        // convert the two points as well as the bbox.
-        Rectangle tBbox = at.createTransformedShape(path).getBounds();
-
-        // convert the points
-        Shape bound;
-        for (int i = 0; i < bounds.size(); i++) {
-            bound = bounds.get(i);
-            bound = at.createTransformedShape(bound);
-            bounds.set(i, bound);
-//            bound.setRect(tBound.getX(), tBound.getY(),
-//                    tBound.getWidth(), tBound.getHeight());
-        }
-
-        path.transform(at);
-
-        return tBbox;
     }
 }

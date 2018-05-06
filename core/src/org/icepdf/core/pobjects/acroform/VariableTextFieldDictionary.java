@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2016 ICEsoft Technologies Inc.
+ * Copyright 2006-2017 ICEsoft Technologies Canada Corp.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -143,8 +143,10 @@ public class VariableTextFieldDictionary extends FieldDictionary {
                     if (gs != null) {
                         color = gs.getFillColor();
                         size = gs.getTextState().tsize;
-                        font = gs.getTextState().font;
-                        fontName = gs.getTextState().fontName;
+                        if (font != null && font.getSubTypeFormat() != Font.CID_FORMAT) {
+                            font = gs.getTextState().font;
+                            fontName = gs.getTextState().fontName;
+                        }
                     }
                 } catch (Throwable e) {
                     logger.warning("Could not validate default appearance, defaulting.");
@@ -156,7 +158,7 @@ public class VariableTextFieldDictionary extends FieldDictionary {
 
     /**
      * If the DA key is present the appearance stream is generated as is,  however if not then the content
-     * is pased and we try to pull the color, size, font, and font name.
+     * is passed and we try to pull the color, size, font, and font name.
      *
      * @param content
      * @return
@@ -169,7 +171,7 @@ public class VariableTextFieldDictionary extends FieldDictionary {
             } else if (parentField != null && library.getObject(parentField.getEntries(), DA_KEY) != null) {
                 possibleContent = library.getString(parentField.getEntries(), DA_KEY);
             } else {
-                possibleContent = content;
+                possibleContent = content != null ? content : "";
             }
             if (resources == null) {
                 resources = library.getCatalog().getInteractiveForm().getResources();
@@ -186,12 +188,16 @@ public class VariableTextFieldDictionary extends FieldDictionary {
                     // default to basic size, as last resort.
                     size = 10;
                 }
-                if (gs.getTextState().font != null) font = gs.getTextState().font;
-                if (gs.getTextState().fontName != null) fontName = gs.getTextState().fontName;
+                // further work is needed here to add font mapping support when CID fonts are detected,
+                // this may also be a fix for our asian font write support problem.
+                if (font != null && font.getSubTypeFormat() != Font.CID_FORMAT) {
+                    if (gs.getTextState().font != null) font = gs.getTextState().font;
+                    if (gs.getTextState().fontName != null) fontName = gs.getTextState().fontName;
+                }
             }
         } catch (Throwable e) {
             logger.warning("Could not generate default appearance stream.");
-            if (logger.isLoggable(Level.FINEST)){
+            if (logger.isLoggable(Level.FINEST)) {
                 logger.log(Level.FINEST, "Error parsing text feld content stream", e);
             }
         }
@@ -227,7 +233,6 @@ public class VariableTextFieldDictionary extends FieldDictionary {
     public Quadding getQuadding() {
         return quadding;
     }
-
 
 
 }

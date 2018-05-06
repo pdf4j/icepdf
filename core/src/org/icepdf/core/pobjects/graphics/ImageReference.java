@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2016 ICEsoft Technologies Inc.
+ * Copyright 2006-2017 ICEsoft Technologies Canada Corp.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -108,7 +108,7 @@ public abstract class ImageReference implements Callable<BufferedImage> {
      *
      * @return decoded/encoded BufferedImage for the respective ImageStream.
      */
-    protected synchronized BufferedImage createImage() {
+    protected BufferedImage createImage() {
         try {
             // block until thread comes back.
             if (futureTask != null) {
@@ -117,9 +117,9 @@ public abstract class ImageReference implements Callable<BufferedImage> {
             if (image == null) {
                 image = call();
             }
-            notify();
         } catch (InterruptedException e) {
-            logger.warning("Image loading interrupted");
+            Thread.currentThread().interrupt();
+            logger.fine("Image loading interrupted");
         } catch (Exception e) {
             logger.log(Level.FINE, "Image loading execution exception", e);
         }

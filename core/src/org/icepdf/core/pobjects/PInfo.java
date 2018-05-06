@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2016 ICEsoft Technologies Inc.
+ * Copyright 2006-2017 ICEsoft Technologies Canada Corp.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -252,9 +252,9 @@ public class PInfo extends Dictionary {
 
                 for (int i = 2; i < title1.length; i += 2) {
                     try {
-                        int b1 = ((int) title1[i]) & 0xFF;
-                        int b2 = ((int) title1[i + 1]) & 0xFF;
-                        sb1.append((char) (b1 * 256 + b2));
+                        int b1 = (((int) title1[i] & 0xFF) << 8) |
+                                (int) title1[i + 1] & 0xFF;
+                        sb1.append((char) (b1));
                     } catch (Exception ex) {
                         // intentionally left empty
                     }

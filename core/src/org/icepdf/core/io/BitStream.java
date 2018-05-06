@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2016 ICEsoft Technologies Inc.
+ * Copyright 2006-2017 ICEsoft Technologies Canada Corp.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -92,23 +92,28 @@ public class BitStream {
     }
 
     /**
-     * @param i
+     * @param count
      * @return
      * @throws java.io.IOException
      */
-    public int getBits(int i) throws IOException {
-        while (bits_left < i) {
-            int r = in.read();
-            if (r < 0) {
-                readEOF = true;
-                break;
+    public int getBits(int count) throws IOException {
+        if (count < 32) {
+            while (bits_left < count) {
+                int r = in.read();
+                if (r < 0) {
+                    readEOF = true;
+                    break;
+                }
+                bits <<= 8;
+                bits |= (r & 0xFF);
+                bits_left += 8;
             }
-            bits <<= 8;
-            bits |= (r & 0xFF);
-            bits_left += 8;
+            bits_left -= count;
+            return (bits >> bits_left) & masks[count];
+        } else if (count == 32) {
+            return (in.read() << 24) | (in.read() << 16) | (in.read() << 8) | in.read();
         }
-        bits_left -= i;
-        return (bits >> bits_left) & masks[i];
+        return 0;
     }
 
     public boolean atEndOfFile() {

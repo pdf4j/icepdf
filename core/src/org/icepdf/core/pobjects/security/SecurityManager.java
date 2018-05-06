@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2016 ICEsoft Technologies Inc.
+ * Copyright 2006-2017 ICEsoft Technologies Canada Corp.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -63,6 +63,10 @@ public class SecurityManager {
 
     // flag for detecting JCE
     private static boolean foundJCE = false;
+
+    // key caches, fairly expensive calculation
+    private byte[] encryptionKey;
+    private byte[] decryptionKey;
 
     // Add security provider of choice before Sun RSA provider (if any)
     static {
@@ -173,7 +177,10 @@ public class SecurityManager {
      * @return encryption key used to encrypt the data
      */
     public byte[] getEncryptionKey() {
-        return securityHandler.getEncryptionKey();
+        if (encryptionKey == null) {
+            encryptionKey = securityHandler.getEncryptionKey();
+        }
+        return encryptionKey;
     }
 
     /**
@@ -182,7 +189,10 @@ public class SecurityManager {
      * @return decryption key used to encrypt the data
      */
     public byte[] getDecryptionKey() {
-        return securityHandler.getDecryptionKey();
+        if (decryptionKey == null) {
+            decryptionKey = securityHandler.getDecryptionKey();
+        }
+        return decryptionKey;
     }
 
     /**

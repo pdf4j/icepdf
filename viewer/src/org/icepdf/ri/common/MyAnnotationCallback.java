@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2016 ICEsoft Technologies Inc.
+ * Copyright 2006-2017 ICEsoft Technologies Canada Corp.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -186,7 +186,7 @@ public class MyAnnotationCallback implements AnnotationCallback {
         page.addAnnotation(annotationComponent.getAnnotation());
 
         // no we have let the pageComponent now about it.
-        pageComponent.addAnnotation(annotationComponent);
+        ((PageViewComponentImpl) pageComponent).addAnnotation(annotationComponent);
 
 //        // finally change the current tool to the annotation selection
 //        documentViewController.getParentController().setDocumentToolMode(
@@ -219,7 +219,7 @@ public class MyAnnotationCallback implements AnnotationCallback {
         // remove from page
         page.deleteAnnotation(annotationComponent.getAnnotation());
         // remove from page view.
-        pageComponent.removeAnnotation(annotationComponent);
+        ((PageViewComponentImpl) pageComponent).removeAnnotation(annotationComponent);
         // check to see if there is an associated popup
         if (annotationComponent.getAnnotation() instanceof MarkupAnnotation) {
             MarkupAnnotation markupAnnotation =
@@ -228,7 +228,7 @@ public class MyAnnotationCallback implements AnnotationCallback {
                 page.deleteAnnotation(markupAnnotation.getPopupAnnotation());
                 // find and remove the popup component
                 ArrayList<AbstractAnnotationComponent> annotationComponents =
-                        ((AbstractPageViewComponent) pageComponent).getAnnotationComponents();
+                        ((PageViewComponentImpl) pageComponent).getAnnotationComponents();
                 Reference compReference;
                 Reference popupReference = markupAnnotation.getPopupAnnotation().getPObjectReference();
                 AnnotationComponent annotationComp;
@@ -239,7 +239,7 @@ public class MyAnnotationCallback implements AnnotationCallback {
                     if (compReference != null && compReference.equals(popupReference)) {
                         if (annotationComp instanceof PopupAnnotationComponent) {
                             PopupAnnotationComponent popupComponent = ((PopupAnnotationComponent) annotationComp);
-                            pageComponent.removeAnnotation(popupComponent);
+                            ((PageViewComponentImpl) pageComponent).removeAnnotation(popupComponent);
                         }
                     }
                 }

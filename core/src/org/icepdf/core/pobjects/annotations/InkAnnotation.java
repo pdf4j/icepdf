@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2016 ICEsoft Technologies Inc.
+ * Copyright 2006-2017 ICEsoft Technologies Canada Corp.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -60,7 +60,7 @@ public class InkAnnotation extends MarkupAnnotation {
     }
 
     @SuppressWarnings("unchecked")
-    public void init() {
+    public void init() throws InterruptedException{
         super.init();
         // look for an ink list
         List<List<Number>> inkLists = library.getArray(entries, INK_LIST_KEY);
@@ -154,16 +154,22 @@ public class InkAnnotation extends MarkupAnnotation {
         }
 
         // create the new instance
-        InkAnnotation inkAnnotation = new InkAnnotation(library, entries);
-        inkAnnotation.init();
-        inkAnnotation.setPObjectReference(stateManager.getNewReferencNumber());
-        inkAnnotation.setNew(true);
+        InkAnnotation inkAnnotation = null;
+        try {
+            inkAnnotation = new InkAnnotation(library, entries);
+            inkAnnotation.init();
+            inkAnnotation.setPObjectReference(stateManager.getNewReferencNumber());
+            inkAnnotation.setNew(true);
 
-        // set default flags.
-        inkAnnotation.setFlag(Annotation.FLAG_READ_ONLY, false);
-        inkAnnotation.setFlag(Annotation.FLAG_NO_ROTATE, false);
-        inkAnnotation.setFlag(Annotation.FLAG_NO_ZOOM, false);
-        inkAnnotation.setFlag(Annotation.FLAG_PRINT, true);
+            // set default flags.
+            inkAnnotation.setFlag(Annotation.FLAG_READ_ONLY, false);
+            inkAnnotation.setFlag(Annotation.FLAG_NO_ROTATE, false);
+            inkAnnotation.setFlag(Annotation.FLAG_NO_ZOOM, false);
+            inkAnnotation.setFlag(Annotation.FLAG_PRINT, true);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            logger.fine("Ink annotation instance creation was interrupted");
+        }
 
 
         return inkAnnotation;
@@ -195,21 +201,30 @@ public class InkAnnotation extends MarkupAnnotation {
         entries.put(INK_LIST_KEY,
                 convertPathToArray(inkPath));
 
-        // we dont' write an ap stream but there might already be one so null it
-        entries.remove(APPEARANCE_STREAM_KEY);
-
         // save the stroke.
         Stroke stroke = getBorderStyleStroke();
 
         // setup the space for the AP content stream.
         af = new AffineTransform();
-        af.translate(-bbox.getMinX(), -bbox.getMinY());
+        if (contentInAnnotSpace) {
+            af.translate(-bbox.getMinX(), -bbox.getMinY());
+        }
 
         shapes.add(new TransformDrawCmd(af));
+        shapes.add(new GraphicsStateCmd(EXT_GSTATE_NAME));
+        shapes.add(new AlphaDrawCmd(
+                AlphaComposite.getInstance(AlphaComposite.SRC_OVER, opacity)));
         shapes.add(new StrokeDrawCmd(stroke));
         shapes.add(new ColorDrawCmd(color));
         shapes.add(new ShapeDrawCmd(inkPath));
         shapes.add(new DrawDrawCmd());
+        shapes.add(new AlphaDrawCmd(
+                AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1.0f)));
+
+        // remove appearance stream if it exists on an existing edit.
+        entries.remove(APPEARANCE_STREAM_KEY);
+
+        // we don't write out an appearance stream for ink annotation, we just regenerate it from properties
     }
 
     public Shape getInkPath() {

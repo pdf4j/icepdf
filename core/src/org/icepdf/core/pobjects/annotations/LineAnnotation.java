@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2016 ICEsoft Technologies Inc.
+ * Copyright 2006-2017 ICEsoft Technologies Canada Corp.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -204,13 +204,16 @@ public class LineAnnotation extends MarkupAnnotation {
         } else {
             entries.put(Annotation.RECTANGLE_KEY, new Rectangle(10, 10, 50, 100));
         }
-
         // create the new instance
-        LineAnnotation lineAnnotation = new LineAnnotation(library, entries);
-        lineAnnotation.init();
-        lineAnnotation.setPObjectReference(stateManager.getNewReferencNumber());
-        lineAnnotation.setNew(true);
-
+        LineAnnotation lineAnnotation = null;
+        try {
+            lineAnnotation = new LineAnnotation(library, entries);
+            lineAnnotation.init();
+            lineAnnotation.setPObjectReference(stateManager.getNewReferencNumber());
+            lineAnnotation.setNew(true);
+        } catch (InterruptedException e) {
+            logger.fine("Line annotation instance creation was interrupted");
+        }
         return lineAnnotation;
     }
 
@@ -221,7 +224,6 @@ public class LineAnnotation extends MarkupAnnotation {
     public static void drawLineStart(Graphics2D g, Name lineEnding,
                                      Point2D startOfLine, Point2D endOfLine,
                                      Color lineColor, Color interiorColor) {
-
         if (lineEnding.equals(LineAnnotation.LINE_END_OPEN_ARROW)) {
             drawOpenArrowStart(g, startOfLine, endOfLine, lineColor, interiorColor);
         } else if (lineEnding.equals(LineAnnotation.LINE_END_CLOSED_ARROW)) {
@@ -522,7 +524,7 @@ public class LineAnnotation extends MarkupAnnotation {
     }
 
     @SuppressWarnings("unchecked")
-    public void init() {
+    public void init() throws InterruptedException {
         super.init();
         // line points
         List<Number> value = library.getArray(entries, L_KEY);
@@ -615,6 +617,9 @@ public class LineAnnotation extends MarkupAnnotation {
         line.lineTo((float) endOfLine.getX(), (float) endOfLine.getY());
         line.closePath();
         shapes.add(new TransformDrawCmd(af));
+//        shapes.add(new GraphicsStateCmd(EXT_GSTATE_NAME));
+        shapes.add(new AlphaDrawCmd(
+                AlphaComposite.getInstance(AlphaComposite.SRC_OVER, opacity)));
         shapes.add(new ShapeDrawCmd(line));
         shapes.add(new StrokeDrawCmd(stroke));
         shapes.add(new ColorDrawCmd(color));
@@ -654,9 +659,13 @@ public class LineAnnotation extends MarkupAnnotation {
             squareDrawOps(
                     shapes, af, endOfLine, startOfLine, endOfLine, color, interiorColor);
         }
+        shapes.add(new AlphaDrawCmd(
+                AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1.0f)));
 
         // remove appearance stream if it exists on an existing edit.
         entries.remove(APPEARANCE_STREAM_KEY);
+
+        // we don't write out an appearance stream for line annotation, we just regenerate it from properties
     }
 
     public Point2D getStartOfLine() {

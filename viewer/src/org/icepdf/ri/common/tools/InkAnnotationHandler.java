@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2016 ICEsoft Technologies Inc.
+ * Copyright 2006-2017 ICEsoft Technologies Canada Corp.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -131,9 +131,9 @@ public class InkAnnotationHandler extends CommonToolHandler implements ToolHandl
         // check to make sure the bbox isn't zero height or width
         bBox.setRect(bBox.getX() - 5, bBox.getY() - 5,
                 bBox.getWidth() + 10, bBox.getHeight() + 10);
-
-        Shape tInkPath = convertToPageSpace(inkPath);
         Rectangle tBbox = convertToPageSpace(bBox).getBounds();
+        // get the ink path in page space then we need to translate it relative to the bbox.
+        Shape tInkPath = convertToPageSpace(inkPath);
 
         // create annotations types that that are rectangle based;
         // which is actually just link annotations

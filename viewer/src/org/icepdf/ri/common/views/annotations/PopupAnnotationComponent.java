@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2016 ICEsoft Technologies Inc.
+ * Copyright 2006-2017 ICEsoft Technologies Canada Corp.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -103,7 +103,12 @@ public class PopupAnnotationComponent extends AbstractAnnotationComponent
 
         if (annotation instanceof PopupAnnotation) {
             popupAnnotation = (PopupAnnotation) annotation;
-            popupAnnotation.init();
+            try {
+                popupAnnotation.init();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                logger.fine("Popup annotation component instance creation was interrupted");
+            }
         }
 
         boolean isVisible = popupAnnotation.isOpen();

@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2016 ICEsoft Technologies Inc.
+ * Copyright 2006-2017 ICEsoft Technologies Canada Corp.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -136,6 +136,14 @@ public class Utils {
     public static String convertByteArrayToHexString(byte[] buffer, boolean addSpaceSeparator, int addDelimiterEverNBytes, char delimiter) {
         return convertByteArrayToHexString(
                 buffer, 0, buffer.length, addSpaceSeparator, addDelimiterEverNBytes, delimiter);
+    }
+
+    public static String byteFormatter(long bytes, boolean si) {
+        int unit = si ? 1000 : 1024;
+        if (bytes < unit) return bytes + " B";
+        int exp = (int) (Math.log(bytes) / Math.log(unit));
+        String pre = (si ? "kMGTPE" : "KMGTPE").charAt(exp-1) + (si ? "" : "i");
+        return String.format("%.1f %sB", bytes / Math.pow(unit, exp), pre);
     }
 
     public static String convertByteArrayToHexString(
@@ -373,7 +381,7 @@ public class Utils {
      * as a plaing text.  The string can be encrypted as well as octal encoded,
      * which is handle by this method.
      *
-     * @param library      docoument library used for encryption handling.
+     * @param library      document library used for encryption handling.
      * @param stringObject string object to convert to string
      * @return converted string.
      */
@@ -405,11 +413,41 @@ public class Utils {
             StringBuilder sb = new StringBuilder();
             Encoding enc = Encoding.getPDFDoc();
             for (int i = 0; i < titleText.length(); i++) {
-                sb.append(titleText.charAt(i));
-//                sb.append(enc.get(titleText.charAt(i)));
+//                sb.append(titleText.charAt(i));
+                sb.append(enc.get(titleText.charAt(i)));
             }
             convertedStringObject = sb.toString();
         }
         return convertedStringObject;
+    }
+
+    /**
+     * Convert a utf-8 encoded string into into an octal enocded byte[] array.
+     *
+     * @param literalString string to convert.
+     * @return converted string value.
+     */
+    public static String convertStringToOctal(String literalString) {
+        // scan string ot see if we have any unicode.
+        int length = literalString.length();
+        boolean foundExtendedAscii = false;
+        for (int i = 0; i < length; i++) {
+            if (literalString.charAt(i) >= 255) {
+                foundExtendedAscii = true;
+                break;
+            }
+        }
+        if (foundExtendedAscii) {
+            char[] octalEncoded = new char[length * 2 + 2];
+            octalEncoded[0] = 254;
+            octalEncoded[1] = 255;
+            for (int i = 0, j = 2; i < length; i++, j += 2) {
+                octalEncoded[j] = (char) ((literalString.charAt(i) >> 8) & 0xFF);
+                octalEncoded[j + 1] = (char) (literalString.charAt(i) & 0xFF);
+            }
+            return new String(octalEncoded);
+        } else {
+            return literalString;
+        }
     }
 }

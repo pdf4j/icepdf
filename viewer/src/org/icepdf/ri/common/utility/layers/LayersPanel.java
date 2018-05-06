@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2016 ICEsoft Technologies Inc.
+ * Copyright 2006-2017 ICEsoft Technologies Canada Corp.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -18,7 +18,9 @@ package org.icepdf.ri.common.utility.layers;
 import org.icepdf.core.pobjects.Document;
 import org.icepdf.core.pobjects.OptionalContent;
 import org.icepdf.core.pobjects.OptionalContentGroup;
+import org.icepdf.core.util.PropertyConstants;
 import org.icepdf.ri.common.SwingController;
+import org.icepdf.ri.common.views.AbstractDocumentView;
 import org.icepdf.ri.common.views.AbstractPageViewComponent;
 import org.icepdf.ri.common.views.DocumentViewController;
 import org.icepdf.ri.common.views.DocumentViewModel;
@@ -164,13 +166,15 @@ public class LayersPanel extends JPanel {
                 // the current page and repaint
                 List<AbstractPageViewComponent> pages = documentViewModel.getPageComponents();
                 AbstractPageViewComponent page = pages.get(documentViewModel.getViewCurrentPageIndex());
-                page.invalidatePageBuffer();
                 // resort page text as layer visibility will have changed.
                 try {
                     page.getPage().getText().sortAndFormatText();
                 } catch (InterruptedException e1) {
                     // silent running for now.
                 }
+                // fire change  event.
+                ((AbstractDocumentView)documentViewController.getDocumentView()).firePropertyChange(
+                        PropertyConstants.DOCUMENT_VIEW_REFRESH_CHANGE, false, true);
                 // repaint the page.
                 page.repaint();
                 // repaint the tree so the checkbox states are show correctly.

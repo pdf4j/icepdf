@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2016 ICEsoft Technologies Inc.
+ * Copyright 2006-2017 ICEsoft Technologies Canada Corp.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -103,7 +103,7 @@ public abstract class AbstractAnnotationComponent extends JComponent implements 
     protected static ResizableBorder resizableBorder =
             new ResizableBorder(resizeBoxSize);
 
-    protected AbstractPageViewComponent pageViewComponent;
+    protected PageViewComponentImpl pageViewComponent;
     protected DocumentViewController documentViewController;
     protected DocumentViewModel documentViewModel;
 
@@ -137,7 +137,7 @@ public abstract class AbstractAnnotationComponent extends JComponent implements 
                                        DocumentViewController documentViewController,
                                        AbstractPageViewComponent pageViewComponent,
                                        DocumentViewModel documentViewModel) {
-        this.pageViewComponent = pageViewComponent;
+        this.pageViewComponent = (PageViewComponentImpl) pageViewComponent;
         this.documentViewModel = documentViewModel;
         this.documentViewController = documentViewController;
         this.annotation = annotation;
@@ -149,35 +149,40 @@ public abstract class AbstractAnnotationComponent extends JComponent implements 
         isMovable = !(annotation.getFlagReadOnly() || annotation.getFlagLocked());
         isResizable = !(annotation.getFlagReadOnly() || annotation.getFlagLocked());
 
-        addMouseListener(this);
-        addMouseMotionListener(this);
+        // lock UI controls.
+        if (isInteractiveAnnotationsEnabled &&
+                annotation.allowScreenOrPrintRenderingOrInteraction()) {
+            addMouseListener(this);
+            addMouseMotionListener(this);
 
-        // disabled focus until we are ready to implement our own handler.
-        setFocusable(true);
-        addFocusListener(this);
+            // disabled focus until we are ready to implement our own handler.
+            setFocusable(true);
+            addFocusListener(this);
 
-        // setup a resizable border.
-        setLayout(new BorderLayout());
-        setBorder(resizableBorder);
+            // setup a resizable border.
+            setLayout(new BorderLayout());
+            setBorder(resizableBorder);
 
-        // set component location and original size.
-        Page currentPage = pageViewComponent.getPage();
-        AffineTransform at = currentPage.getPageTransform(
-                documentViewModel.getPageBoundary(),
-                documentViewModel.getViewRotation(),
-                documentViewModel.getViewZoom());
-        final Rectangle location =
-                at.createTransformedShape(annotation.getUserSpaceRectangle()).getBounds();
-        SwingUtilities.invokeLater(new Runnable() {
-            public void run() {
-                setBounds(location);
-            }
-        });
+            // set component location and original size.
+            Page currentPage = pageViewComponent.getPage();
+            AffineTransform at = currentPage.getPageTransform(
+                    documentViewModel.getPageBoundary(),
+                    documentViewModel.getViewRotation(),
+                    documentViewModel.getViewZoom());
+            final Rectangle location =
+                    at.createTransformedShape(annotation.getUserSpaceRectangle()).getBounds();
+            SwingUtilities.invokeLater(new Runnable() {
+                public void run() {
+                    setBounds(location);
+                }
+            });
 
-        // update zoom and rotation state
-        currentRotation = documentViewModel.getViewRotation();
-        currentZoom = documentViewModel.getViewZoom();
-        resizableBorder.setZoom(currentZoom);
+
+            // update zoom and rotation state
+            currentRotation = documentViewModel.getViewRotation();
+            currentZoom = documentViewModel.getViewZoom();
+            resizableBorder.setZoom(currentZoom);
+        }
 
     }
 
@@ -382,7 +387,6 @@ public abstract class AbstractAnnotationComponent extends JComponent implements 
         // on mouse enter pass event to annotation callback if we are in normal viewing
         // mode. A and AA dictionaries are taken into consideration.
         //additionalActionsHandler(AdditionalActionsDictionary.ANNOTATION_E_KEY, e);
-
         repaint();
     }
 
@@ -392,7 +396,7 @@ public abstract class AbstractAnnotationComponent extends JComponent implements 
         isMousePressed = true;
         int x = 0, y = 0;
         Point point = new Point();
-        if (e != null){
+        if (e != null) {
             x = e.getX();
             y = e.getY();
             point = e.getPoint();

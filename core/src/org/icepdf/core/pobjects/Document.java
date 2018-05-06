@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2016 ICEsoft Technologies Inc.
+ * Copyright 2006-2017 ICEsoft Technologies Canada Corp.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -926,7 +926,6 @@ public class Document {
      */
     public PDimension getPageDimension(int pageNumber, float userRotation) {
         Page page = catalog.getPageTree().getPage(pageNumber);
-        page.init();
         return page.getSize(userRotation);
     }
 
@@ -943,10 +942,9 @@ public class Document {
      * @return page dimension for the specified page number.
      * @see #getPageDimension(int, float)
      */
-    public PDimension getPageDimension(int pageNumber, float userRotation, float userZoom) {
+    public PDimension getPageDimension(int pageNumber, float userRotation, float userZoom){
         Page page = catalog.getPageTree().getPage(pageNumber);
         if (page != null) {
-            page.init();
             return page.getSize(userRotation, userZoom);
         } else {
             return new PDimension(0, 0);
@@ -1020,7 +1018,7 @@ public class Document {
      * @param userZoom       Zoom factor to be applied to the rendered page.
      */
     public void paintPage(int pageNumber, Graphics g, final int renderHintType,
-                          final int pageBoundary, float userRotation, float userZoom) {
+                          final int pageBoundary, float userRotation, float userZoom) throws InterruptedException {
         Page page = catalog.getPageTree().getPage(pageNumber);
         page.init();
         PDimension sz = page.getSize(userRotation, userZoom);
@@ -1139,7 +1137,7 @@ public class Document {
      */
     public Image getPageImage(int pageNumber,
                               final int renderHintType, final int pageBoundary,
-                              float userRotation, float userZoom) {
+                              float userRotation, float userZoom) throws InterruptedException {
         Page page = catalog.getPageTree().getPage(pageNumber);
         page.init();
         PDimension sz = page.getSize(pageBoundary, userRotation, userZoom);
@@ -1189,7 +1187,7 @@ public class Document {
      *                   The page number is zero-based.
      * @return page PageText data Structure.
      */
-    public PageText getPageViewText(int pageNumber) {
+    public PageText getPageViewText(int pageNumber) throws InterruptedException{
         PageTree pageTree = catalog.getPageTree();
         if (pageNumber >= 0 && pageNumber < pageTree.getNumberOfPages()) {
             Page pg = pageTree.getPage(pageNumber);
@@ -1291,7 +1289,7 @@ public class Document {
      * @param pageNumber page number to act on.  Zero-based page number.
      * @return vector of Images inside the current page
      */
-    public List<Image> getPageImages(int pageNumber) {
+    public List<Image> getPageImages(int pageNumber) throws InterruptedException {
         Page pg = catalog.getPageTree().getPage(pageNumber);
         pg.init();
         return pg.getImages();

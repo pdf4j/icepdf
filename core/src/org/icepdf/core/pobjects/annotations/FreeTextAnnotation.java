@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2016 ICEsoft Technologies Inc.
+ * Copyright 2006-2017 ICEsoft Technologies Canada Corp.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -230,7 +230,7 @@ public class FreeTextAnnotation extends MarkupAnnotation {
         super(l, h);
     }
 
-    public void init() {
+    public void init() throws InterruptedException{
         super.init();
 
         Appearance appearance = appearances.get(APPEARANCE_STREAM_NORMAL_KEY);
@@ -349,17 +349,22 @@ public class FreeTextAnnotation extends MarkupAnnotation {
         }
 
         // create the new instance
-        FreeTextAnnotation freeTextAnnotation = new FreeTextAnnotation(library, entries);
-        freeTextAnnotation.init();
-        freeTextAnnotation.setPObjectReference(stateManager.getNewReferencNumber());
-        freeTextAnnotation.setNew(true);
+        FreeTextAnnotation freeTextAnnotation = null;
+        try {
+            freeTextAnnotation = new FreeTextAnnotation(library, entries);
+            freeTextAnnotation.init();
+            freeTextAnnotation.setPObjectReference(stateManager.getNewReferencNumber());
+            freeTextAnnotation.setNew(true);
 
-        // set default flags.
-        freeTextAnnotation.setFlag(Annotation.FLAG_READ_ONLY, false);
-        freeTextAnnotation.setFlag(Annotation.FLAG_NO_ROTATE, false);
-        freeTextAnnotation.setFlag(Annotation.FLAG_NO_ZOOM, false);
-        freeTextAnnotation.setFlag(Annotation.FLAG_PRINT, true);
-
+            // set default flags.
+            freeTextAnnotation.setFlag(Annotation.FLAG_READ_ONLY, false);
+            freeTextAnnotation.setFlag(Annotation.FLAG_NO_ROTATE, false);
+            freeTextAnnotation.setFlag(Annotation.FLAG_NO_ZOOM, false);
+            freeTextAnnotation.setFlag(Annotation.FLAG_PRINT, true);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            logger.fine("FreeTextAnnotation initialization interrupted.");
+        }
         return freeTextAnnotation;
     }
 
@@ -467,6 +472,11 @@ public class FreeTextAnnotation extends MarkupAnnotation {
             stroke = new BasicStroke(borderStyle.getStrokeWidth());
         }
 
+        // apply opacity graphics state.
+        shapes.add(new GraphicsStateCmd(EXT_GSTATE_NAME));
+        shapes.add(new AlphaDrawCmd(
+                AlphaComposite.getInstance(AlphaComposite.SRC_OVER, opacity)));
+
         // background colour
         shapes.add(new ShapeDrawCmd(new Rectangle2D.Double(bbox.getX(), bbox.getY() + 10,
                 bbox.getWidth() - 10, bbox.getHeight() - 10)));
@@ -484,10 +494,15 @@ public class FreeTextAnnotation extends MarkupAnnotation {
         shapes.add(new ColorDrawCmd(fontColor));
         shapes.add(new TextSpriteDrawCmd(textSprites));
 
+        shapes.add(new AlphaDrawCmd(
+                AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1.0f)));
+
         // update the appearance stream
         // create/update the appearance stream of the xObject.
         StateManager stateManager = library.getStateManager();
-        Form form = getOrGenerateAppearanceForm();
+        Form form = updateAppearanceStream(shapes, bbox, matrix,
+                PostScriptEncoder.generatePostScript(shapes.getShapes()));
+        generateExternalGraphicsState(form, opacity);
 
         if (form != null) {
             Rectangle2D formBbox = new Rectangle2D.Float(0, 0,

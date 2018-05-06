@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2016 ICEsoft Technologies Inc.
+ * Copyright 2006-2017 ICEsoft Technologies Canada Corp.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -82,7 +82,7 @@ public interface ContentParser {
      * @return Shapes object which contains the extract PageText object.
      * @throws UnsupportedEncodingException encoding error.
      */
-    Shapes parseTextBlocks(byte[][] source) throws UnsupportedEncodingException;
+    Shapes parseTextBlocks(byte[][] source) throws UnsupportedEncodingException, InterruptedException;
 
     /**
      * Sets the scale factor used by some graphic state parameters so that the

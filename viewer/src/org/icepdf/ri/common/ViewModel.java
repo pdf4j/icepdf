@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2016 ICEsoft Technologies Inc.
+ * Copyright 2006-2017 ICEsoft Technologies Canada Corp.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -44,7 +44,7 @@ public class ViewModel {
 
     private boolean isWidgetAnnotationHighlight;
 
-    static File getDefaultFile() {
+    public static File getDefaultFile() {
         return defaultFile;
     }
 
@@ -58,7 +58,7 @@ public class ViewModel {
         return defaultURL;
     }
 
-    static void setDefaultFile(File f) {
+    public static void setDefaultFile(File f) {
         defaultFile = f;
     }
 

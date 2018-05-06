@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2016 ICEsoft Technologies Inc.
+ * Copyright 2006-2017 ICEsoft Technologies Canada Corp.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -630,6 +630,8 @@ public class OContentParser extends AbstractContentParser {
             logger.finer("End of Content Stream");
         } catch (NoninvertibleTransformException e) {
             logger.log(Level.WARNING, "Error creating inverse transform:", e);
+        } catch (InterruptedException e){
+            throw new InterruptedException(e.getMessage());
         } finally {
             // End of stream set alpha state back to 1.0f, so that other
             // streams aren't applied an incorrect alpha value.
@@ -659,7 +661,7 @@ public class OContentParser extends AbstractContentParser {
      * @param source content stream source.
      * @return vector where each entry is the text extracted from a text block.
      */
-    public Shapes parseTextBlocks(byte[][] source) throws UnsupportedEncodingException {
+    public Shapes parseTextBlocks(byte[][] source) throws UnsupportedEncodingException, InterruptedException {
 
         // great a parser to get tokens for stream
         Parser parser = new Parser(new ByteDoubleArrayInputStream(source));
@@ -727,7 +729,7 @@ public class OContentParser extends AbstractContentParser {
      * @throws java.io.IOException end of content stream is found
      */
     float parseText(Parser parser, Shapes shapes, double previousBTStart)
-            throws IOException {
+            throws IOException, InterruptedException {
         Object nextToken;
         inTextBlock = true;
         // keeps track of previous text placement so that Compatibility and

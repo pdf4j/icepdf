@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2016 ICEsoft Technologies Inc.
+ * Copyright 2006-2017 ICEsoft Technologies Canada Corp.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -199,16 +199,16 @@ public class FontManager {
     }
 
     /**
-     * <p>Initializes the fontList by reading the system fonts paths via readFonts()
+     * <p>Initializes the fontList by reading the system fonts paths via readSystemFonts()
      * but only if the fontList is null or is empty.  Generally the fontManager
-     * is used
+     * is used with the {@link org.icepdf.ri.util.FontPropertiesManager }
      * </p>
      *
      * @return instance of the singleton fontManager.
      */
     public FontManager initialize() {
         if (fontList == null || fontList.size() == 0) {
-            readFonts(null);
+            readSystemFonts(null);
         }
         return fontManager;
     }
@@ -405,9 +405,9 @@ public class FontManager {
                 }
             }
         } catch (AccessControlException e) {
-            logger.log(Level.FINER, "SecurityException: failed to load fonts from directory: ", e);
+            logger.log(Level.WARNING, "SecurityException: failed to load fonts from directory: ", e);
         } catch (Throwable e) {
-            logger.log(Level.FINER, "Failed to load fonts from directory: ", e);
+            logger.log(Level.FINE, "Failed to load fonts from directory: ", e);
         }
     }
 

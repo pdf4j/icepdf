@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2016 ICEsoft Technologies Inc.
+ * Copyright 2006-2017 ICEsoft Technologies Canada Corp.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -79,6 +79,9 @@ public class SVG {
                 svgGenerator.stream(out, useCSS);
             }
         } catch (org.apache.batik.svggen.SVGGraphics2DIOException e) {
+            logger.log(Level.SEVERE, "Error creating svg document.", e);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
             logger.log(Level.SEVERE, "Error creating svg document.", e);
         }
     }

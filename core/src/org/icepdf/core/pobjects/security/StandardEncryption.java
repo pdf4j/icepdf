@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2016 ICEsoft Technologies Inc.
+ * Copyright 2006-2017 ICEsoft Technologies Canada Corp.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -16,7 +16,6 @@
 package org.icepdf.core.pobjects.security;
 
 import org.icepdf.core.pobjects.Reference;
-import org.icepdf.core.pobjects.StringObject;
 import org.icepdf.core.util.Utils;
 
 import javax.crypto.*;
@@ -302,8 +301,10 @@ class StandardEncryption {
     /**
      * General encryption algorithm 3.1 for encryption of data using an
      * encryption key.
+     *
+     * Must be synchronized for stream decoding.
      */
-    public InputStream generalEncryptionInputStream(
+    public synchronized InputStream generalEncryptionInputStream(
             Reference objectReference,
             byte[] encryptionKey,
             final String algorithmType,
@@ -551,8 +552,7 @@ class StandardEncryption {
             }
 
             // Step 5: Pass in the first element of the file's file identifies array
-            String firstFileID =
-                    ((StringObject) encryptionDictionary.getFileID().get(0)).getLiteralString();
+            String firstFileID = encryptionDictionary.getLiteralString(encryptionDictionary.getFileID().get(0));
             byte[] fileID = Utils.convertByteCharSequenceToByteArray(firstFileID);
             md5.update(fileID);
 
@@ -972,7 +972,7 @@ class StandardEncryption {
 
             // Step 3: Pass the first element of the files identify array to the
             // hash function and finish the hash.
-            String firstFileID = ((StringObject) encryptionDictionary.getFileID().get(0)).getLiteralString();
+            String firstFileID = encryptionDictionary.getLiteralString(encryptionDictionary.getFileID().get(0));
             byte[] fileID = Utils.convertByteCharSequenceToByteArray(firstFileID);
             byte[] encryptData = md5.digest(fileID);
 

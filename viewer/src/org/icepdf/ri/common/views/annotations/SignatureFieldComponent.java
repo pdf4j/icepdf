@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2016 ICEsoft Technologies Inc.
+ * Copyright 2006-2017 ICEsoft Technologies Canada Corp.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -144,14 +144,19 @@ public class SignatureFieldComponent extends WidgetAnnotationComponent {
      * @return SignatureWidgetAnnotation for the instance annotation object.
      */
     private SignatureWidgetAnnotation getSignatureWidgetAnnotation() {
-        SignatureWidgetAnnotation widget;
+        SignatureWidgetAnnotation widget = null;
         if (annotation instanceof SignatureWidgetAnnotation) {
             widget = (SignatureWidgetAnnotation) annotation;
         } else {
             // corner case for PDF that aren't well formed
-            widget = new SignatureWidgetAnnotation(annotation);
-            widget.init();
-            annotation = widget;
+            try {
+                widget = new SignatureWidgetAnnotation(annotation);
+                widget.init();
+                annotation = widget;
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                logger.fine("Signature component annotation instance creation was interrupted");
+            }
         }
         return widget;
     }

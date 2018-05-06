@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2016 ICEsoft Technologies Inc.
+ * Copyright 2006-2017 ICEsoft Technologies Canada Corp.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -29,14 +29,11 @@ import java.awt.*;
  * which also include annotation action properties.
  * <p/>
  * Currently only Link Annotation are supported and the Action types GoTo and
- * URI.  It will be quite easy to add more properites in the future given the
+ * URI.  It will be quite easy to add more properties in the future given the
  * factory nature of this class
  */
 @SuppressWarnings("serial")
 public class AnnotationPanel extends AnnotationPanelAdapter {
-
-    // layouts constraint
-    private GridBagConstraints constraints;
 
     private PropertiesManager propertiesManager;
 
@@ -196,23 +193,5 @@ public class AnnotationPanel extends AnnotationPanelAdapter {
         }
     }
 
-    /**
-     * Gridbag constructor helper
-     *
-     * @param component component to add to grid
-     * @param x         row
-     * @param y         col
-     * @param rowSpan
-     * @param colSpan
-     */
-    private void addGB(JPanel layout, Component component,
-                       int x, int y,
-                       int rowSpan, int colSpan) {
-        constraints.gridx = x;
-        constraints.gridy = y;
-        constraints.gridwidth = rowSpan;
-        constraints.gridheight = colSpan;
-        layout.add(component, constraints);
-    }
 
 }

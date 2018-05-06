@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2016 ICEsoft Technologies Inc.
+ * Copyright 2006-2017 ICEsoft Technologies Canada Corp.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -105,7 +105,7 @@ public class CurrentPageChanger extends MouseAdapter implements AdjustmentListen
                     new ArrayList<PageViewComponent>(10);
             Rectangle pageBounds;
             int pageCount = 0;
-            for (PageViewComponent pageComponent : pageComponents) {
+            for (AbstractPageViewComponent pageComponent : pageComponents) {
                 if (pageComponent != null) {
                     pageBounds = documentViewModel.getPageBounds(pageCount);
                     if (pageBounds != null &&

@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2016 ICEsoft Technologies Inc.
+ * Copyright 2006-2017 ICEsoft Technologies Canada Corp.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -16,10 +16,7 @@
 
 package org.icepdf.core.pobjects.acroform;
 
-import org.icepdf.core.pobjects.Dictionary;
-import org.icepdf.core.pobjects.Name;
-import org.icepdf.core.pobjects.Reference;
-import org.icepdf.core.pobjects.StringObject;
+import org.icepdf.core.pobjects.*;
 import org.icepdf.core.pobjects.annotations.AbstractWidgetAnnotation;
 import org.icepdf.core.util.Library;
 import org.icepdf.core.util.Utils;
@@ -217,6 +214,7 @@ public class FieldDictionary extends Dictionary {
      *
      * @return list of child elements.
      */
+    @SuppressWarnings("unchecked")
     public ArrayList<Object> getKids() {
         // find some kids.
         if (kids == null) {
@@ -228,6 +226,9 @@ public class FieldDictionary extends Dictionary {
                 for (Reference aChildren : children) {
                     tmp = library.getObject(aChildren);
                     // have a deeper structure,  shouldn't happen though or at least no examples yet.
+                    if (tmp instanceof PObject){
+                        tmp = ((PObject)tmp).getObject();
+                    }
                     if (tmp instanceof HashMap) {
                         kids.add(FieldDictionaryFactory.buildField(library, (HashMap) tmp));
                     } else if (tmp instanceof AbstractWidgetAnnotation) {

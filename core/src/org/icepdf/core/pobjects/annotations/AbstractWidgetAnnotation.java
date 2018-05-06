@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2016 ICEsoft Technologies Inc.
+ * Copyright 2006-2017 ICEsoft Technologies Canada Corp.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -124,12 +124,9 @@ public abstract class AbstractWidgetAnnotation<T extends FieldDictionary> extend
         // the widgets on a page.
         if (enableHighlightedWidget) {
             AffineTransform preHighLightTransform = g.getTransform();
-
             g.setColor(highlightColor);
             g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, highlightAlpha));
-            Rectangle2D bbox = userSpaceRectangle;
-            g.fillRect(0, 0, (int) bbox.getWidth(), (int) bbox.getHeight());
-
+            g.fill(deriveDrawingRectangle());
             g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1.0f));
             g.setTransform(preHighLightTransform);
         }
@@ -243,7 +240,7 @@ public abstract class AbstractWidgetAnnotation<T extends FieldDictionary> extend
         String[] lines = contents.split("\n|\r|\f");
         for (String line : lines) {
             content.append('(').append(line.replaceAll("(?=[()\\\\])", "\\\\")
-                    .replaceAll("ÿ", "")).append(")' ");
+                    .replaceAll("Ã¿", "")).append(")' ");
         }
         return content;
     }
@@ -260,7 +257,6 @@ public abstract class AbstractWidgetAnnotation<T extends FieldDictionary> extend
         for (String line : lines) {
             char[] chars = line.toCharArray();
             StringBuffer hex = new StringBuffer();
-//            hex.append("FEFF");
             for (int i = 0; i < chars.length; i++) {
                 hex.append(Integer.toHexString((int) chars[i]));
             }

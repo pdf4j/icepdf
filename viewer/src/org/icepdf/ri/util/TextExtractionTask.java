@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2016 ICEsoft Technologies Inc.
+ * Copyright 2006-2017 ICEsoft Technologies Canada Corp.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -16,6 +16,7 @@
 package org.icepdf.ri.util;
 
 import org.icepdf.core.pobjects.Document;
+import org.icepdf.core.pobjects.Page;
 import org.icepdf.core.pobjects.graphics.text.LineText;
 import org.icepdf.core.pobjects.graphics.text.WordText;
 import org.icepdf.ri.common.SwingWorker;
@@ -191,7 +192,15 @@ public class TextExtractionTask {
                     fileOutputStream.write(pageNumber);
                     fileOutputStream.write(10); // line break
 
-                    List<LineText> pageLines = document.getPageText(i).getPageLines();
+                    Page page = document.getPageTree().getPage(i);
+                    List<LineText> pageLines;
+                    if (page.isInitiated()) {
+                        // get a pages already initialized text.
+                        pageLines = document.getPageViewText(i).getPageLines();
+                    } else {
+                        // grap the text the fastest way possible.
+                        pageLines = document.getPageText(i).getPageLines();
+                    }
                     StringBuilder extractedText;
                     for (LineText lineText : pageLines) {
                         extractedText = new StringBuilder();

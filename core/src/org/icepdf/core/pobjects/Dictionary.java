@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2016 ICEsoft Technologies Inc.
+ * Copyright 2006-2017 ICEsoft Technologies Canada Corp.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -119,7 +119,7 @@ public class Dictionary {
     /**
      * Initiate the Dictionary. Retrieve any needed attributes.
      */
-    public void init() {
+    public void init() throws InterruptedException {
     }
 
     /**
@@ -210,6 +210,19 @@ public class Dictionary {
     protected String setString(final Name key, String value) {
         // make sure we store an encrypted documents string as encrypted
         entries.put(key, new LiteralStringObject(value, getPObjectReference(), library.getSecurityManager()));
+        return value;
+    }
+
+    /**
+     * Sets the dictionary key value, handling any encryption so dictionary can be written correctly.
+     *
+     * @param key   dictionary key
+     * @param value key value.
+     * @return string value of the newly set string which will always be decrypted.
+     */
+    protected String setHexString(final Name key, String value) {
+        // make sure we store an encrypted documents string as encrypted
+        entries.put(key, new HexStringObject(value, getPObjectReference(), library.getSecurityManager()));
         return value;
     }
 

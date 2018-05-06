@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2016 ICEsoft Technologies Inc.
+ * Copyright 2006-2017 ICEsoft Technologies Canada Corp.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -15,9 +15,8 @@
  */
 package org.icepdf.core.pobjects.annotations;
 
-import org.icepdf.core.pobjects.Name;
-import org.icepdf.core.pobjects.PDate;
-import org.icepdf.core.pobjects.StringObject;
+import org.icepdf.core.pobjects.*;
+import org.icepdf.core.pobjects.graphics.GraphicsState;
 import org.icepdf.core.util.Library;
 
 import java.util.HashMap;
@@ -152,6 +151,11 @@ public abstract class MarkupAnnotation extends Annotation {
      */
     public static final Name EX_DATA_KEY = new Name("ExData");
 
+    /**
+     * Named graphics state name used to store transparency values.
+     */
+    public static final Name EXT_GSTATE_NAME = new Name("ip1");
+
     protected String titleText;
     protected PopupAnnotation popupAnnotation;
     protected float opacity = 1.0f;
@@ -167,7 +171,7 @@ public abstract class MarkupAnnotation extends Annotation {
         super(l, h);
     }
 
-    public void init() {
+    public void init() throws InterruptedException {
         super.init();
         // title text
         titleText = getString(T_KEY);
@@ -224,8 +228,52 @@ public abstract class MarkupAnnotation extends Annotation {
         return popupAnnotation;
     }
 
+    protected static void generateExternalGraphicsState(Form form, float opacity) {
+        // add the transparency graphic context settings.
+        if (form != null) {
+            Resources resources = form.getResources();
+            HashMap<Object, Object> graphicsProperties = new HashMap<Object, Object>(2);
+            HashMap<Object, Object> graphicsState = new HashMap<Object, Object>(1);
+            graphicsProperties.put(GraphicsState.CA_STROKING_KEY, opacity);
+            graphicsProperties.put(GraphicsState.CA_NON_STROKING_KEY, opacity);
+            graphicsState.put(EXT_GSTATE_NAME, graphicsProperties);
+            resources.getEntries().put(Resources.EXTGSTATE_KEY, graphicsState);
+            form.setResources(resources);
+        }
+    }
+
+    /**
+     * Gets the opacity value for a markup annotation.  This value can be optionally used to apply a global
+     * opacity value when painting or regenerating the contentStream.
+     *
+     * @return current opacity value in the range of 0.0 ... 1.0
+     */
     public float getOpacity() {
         return opacity;
+    }
+
+    /**
+     * Set the opacity value of the /CA key in the markup annotation dictionary.
+     *
+     * @param opacity opacity in the range of 0.0 ... 1.0.
+     */
+    public void setOpacity(float opacity) {
+        if (this.opacity >= 0 && this.opacity <= 1.0) {
+            this.opacity = opacity;
+            entries.put(CA_KEY, this.opacity);
+        }
+    }
+
+    /**
+     * Set the opacity value of the /CA key in the markup annotation dictionary.
+     *
+     * @param opacity opacity in the range of 0 ... 255.
+     */
+    public void setOpacity(int opacity) {
+        if (this.opacity >= 0 && this.opacity <= 255) {
+            this.opacity = Math.round(opacity / 2.55f) / 100.0f;
+            entries.put(CA_KEY, this.opacity);
+        }
     }
 
     public String getRichText() {

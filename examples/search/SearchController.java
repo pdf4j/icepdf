@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2016 ICEsoft Technologies Inc.
+ * Copyright 2006-2017 ICEsoft Technologies Canada Corp.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -20,9 +20,12 @@ import org.icepdf.core.pobjects.graphics.text.WordText;
 import org.icepdf.core.search.DocumentSearchController;
 import org.icepdf.ri.common.SwingController;
 import org.icepdf.ri.common.SwingViewBuilder;
+import org.icepdf.ri.util.FontPropertiesManager;
+import org.icepdf.ri.util.PropertiesManager;
 
 import javax.swing.*;
 import java.util.ArrayList;
+import java.util.ResourceBundle;
 
 /**
  * The <code>SearchHighlight</code> class is an example of how to use
@@ -47,6 +50,13 @@ public class SearchController {
 
         // Get a file from the command line to open
         String filePath = args[0];
+
+        // read/store the font cache.
+        ResourceBundle messageBundle = ResourceBundle.getBundle(
+                PropertiesManager.DEFAULT_MESSAGE_BUNDLE);
+        PropertiesManager properties = new PropertiesManager(System.getProperties(),
+                ResourceBundle.getBundle(PropertiesManager.DEFAULT_MESSAGE_BUNDLE));
+        new FontPropertiesManager(properties, System.getProperties(), messageBundle);
 
         // get search terms from command line
         String[] terms = new String[args.length - 1];

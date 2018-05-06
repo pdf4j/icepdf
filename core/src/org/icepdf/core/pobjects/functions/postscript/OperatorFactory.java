@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2016 ICEsoft Technologies Inc.
+ * Copyright 2006-2017 ICEsoft Technologies Canada Corp.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -15,8 +15,8 @@
  */
 package org.icepdf.core.pobjects.functions.postscript;
 
-import java.util.HashMap;
 import java.util.Stack;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Operator factory takes a operand char offset and quickly returns a Operator
@@ -28,8 +28,8 @@ import java.util.Stack;
  */
 public class OperatorFactory {
 
-    private static HashMap<Integer, Operator> operatorCache =
-            new HashMap<Integer, Operator>();
+    private static ConcurrentHashMap<Integer, Operator> operatorCache =
+            new ConcurrentHashMap<Integer, Operator>();
 
     @SuppressWarnings(value = "unchecked")
     public static Operator getOperator(char ch[], int offset, int length) {

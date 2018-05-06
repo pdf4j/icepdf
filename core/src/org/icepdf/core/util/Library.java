@@ -1,6 +1,6 @@
 /*
 /*
- * Copyright 2006-2016 ICEsoft Technologies Inc.
+ * Copyright 2006-2017 ICEsoft Technologies Canada Corp.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -49,47 +49,36 @@ public class Library {
             Logger.getLogger(Library.class.toString());
 
     protected static ThreadPoolExecutor commonThreadPool;
-    protected static ThreadPoolExecutor painterThreadPool;
     protected static ThreadPoolExecutor imageThreadPool;
 
     protected static int commonPoolThreads;
-    protected static int painterPoolThreads;
     protected static int imagePoolThreads;
-    private static final long KEEP_ALIVE_TIME = 10;
+    private static final long KEEP_ALIVE_TIME = 90;
 
     static {
         try {
             commonPoolThreads =
                     Defs.intProperty("org.icepdf.core.library.threadPoolSize", 2);
             if (commonPoolThreads < 1) {
-                commonPoolThreads = 4;
+                commonPoolThreads = 2;
             }
         } catch (NumberFormatException e) {
             log.warning("Error reading buffered scale factor");
         }
 
         try {
-            painterPoolThreads =
-                    Defs.intProperty("org.icepdf.core.library.painterThreadPoolSize", 2);
-            if (painterPoolThreads < 1) {
-                painterPoolThreads = 2;
-            }
-        } catch (NumberFormatException e) {
-            log.warning("Error reading buffered scale factor");
-        }
-
-        try {
+            // todo make ImageReference call interruptible and then we can get rid of this pool.
             imagePoolThreads =
-                    Defs.intProperty("org.icepdf.core.library.imageThreadPoolSize", 4);
+                    Defs.intProperty("org.icepdf.core.library.imageThreadPoolSize", 2);
             if (imagePoolThreads < 1) {
-                imagePoolThreads = 4;
+                imagePoolThreads = 2;
             }
         } catch (NumberFormatException e) {
             log.warning("Error reading buffered scale factor");
         }
 
         log.fine("Starting ICEpdf Thread Pools: " +
-                (commonPoolThreads + painterPoolThreads + imagePoolThreads) +
+                (commonPoolThreads + imagePoolThreads) +
                 " threads.");
         initializeThreadPool();
     }
@@ -155,14 +144,18 @@ public class Library {
         Object ob;
         while (true) {
             WeakReference<Object> obRef = refs.get(reference);
-            ob = obRef != null ? obRef.get() : null;
             // check stateManager first to allow for annotations to be injected
             // from a separate file.
-            if (ob == null && stateManager != null) {
+            if (stateManager != null) {
                 if (stateManager.contains(reference)) {
-                    return stateManager.getChange(reference);
+                    ob = stateManager.getChange(reference);
+                    if (ob instanceof PObject){
+                        return ((PObject) ob).getObject();
+                    }
+                    return ob;
                 }
             }
+            ob = obRef != null ? obRef.get() : null;
             if (ob == null && lazyObjectLoader != null) {
                 ob = lazyObjectLoader.loadObject(reference);
             }
@@ -785,28 +778,12 @@ public class Library {
                 return newThread;
             }
         });
-
-        painterThreadPool = new ThreadPoolExecutor(
-                painterPoolThreads, painterPoolThreads, KEEP_ALIVE_TIME, TimeUnit.SECONDS,
-                new LinkedBlockingQueue<Runnable>());
-        // set a lower thread priority
-        painterThreadPool.setThreadFactory(new ThreadFactory() {
-            public Thread newThread(java.lang.Runnable command) {
-                Thread newThread = new Thread(command);
-                newThread.setName("ICEpdf-thread-painter-pool");
-                newThread.setPriority(Thread.NORM_PRIORITY);
-                newThread.setDaemon(true);
-                return newThread;
-            }
-        });
     }
 
     public static void shutdownThreadPool() {
         // do a little clean up.
         commonThreadPool.purge();
         commonThreadPool.shutdownNow();
-        painterThreadPool.purge();
-        painterThreadPool.shutdownNow();
         imageThreadPool.purge();
         imageThreadPool.shutdownNow();
     }
@@ -822,14 +799,6 @@ public class Library {
     public static void executeImage(FutureTask callable) {
         try {
             imageThreadPool.execute(callable);
-        } catch (RejectedExecutionException e) {
-            log.severe("ICEpdf Common Thread Pool was shutdown!");
-        }
-    }
-
-    public static void executePainter(Runnable runnable) {
-        try {
-            painterThreadPool.execute(runnable);
         } catch (RejectedExecutionException e) {
             log.severe("ICEpdf Common Thread Pool was shutdown!");
         }

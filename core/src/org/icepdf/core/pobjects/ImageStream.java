@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2016 ICEsoft Technologies Inc.
+ * Copyright 2006-2017 ICEsoft Technologies Canada Corp.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -165,7 +165,7 @@ public class ImageStream extends Stream {
      */
     // was synchronized, not think it is needed?
     @SuppressWarnings("unchecked")
-    public synchronized BufferedImage getImage(GraphicsState graphicsState, Resources resources) {
+    public synchronized BufferedImage getImage(GraphicsState graphicsState, Resources resources) throws InterruptedException {
         // check the pool encase we already parse this image.
 
         if (pObjectReference != null) {

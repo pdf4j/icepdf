@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2016 ICEsoft Technologies Inc.
+ * Copyright 2006-2017 ICEsoft Technologies Canada Corp.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -193,9 +193,6 @@ public class LineText extends AbstractText implements TextSelect {
 
         for (WordText word : words) {
             selectedText.append(word.getSelected());
-        }
-        if (hasSelected) {
-            selectedText.append('\n');
         }
         return selectedText;
     }

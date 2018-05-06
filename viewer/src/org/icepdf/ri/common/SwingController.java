@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2016 ICEsoft Technologies Inc.
+ * Copyright 2006-2017 ICEsoft Technologies Canada Corp.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -32,6 +32,7 @@ import org.icepdf.core.util.Utils;
 import org.icepdf.ri.common.fonts.FontDialog;
 import org.icepdf.ri.common.search.DocumentSearchControllerImpl;
 import org.icepdf.ri.common.utility.annotation.AnnotationPanel;
+import org.icepdf.ri.common.utility.attachment.AttachmentPanel;
 import org.icepdf.ri.common.utility.layers.LayersPanel;
 import org.icepdf.ri.common.utility.outline.OutlineItemTreeNode;
 import org.icepdf.ri.common.utility.search.SearchPanel;
@@ -193,6 +194,7 @@ public class SwingController
     private JTree outlinesTree;
     private JScrollPane outlinesScrollPane;
     private SearchPanel searchPanel;
+    private AttachmentPanel attachmentPanel;
     private ThumbnailsPanel thumbnailsPanel;
     private LayersPanel layersPanel;
     private SignaturesPanel signaturesPanel;
@@ -971,6 +973,13 @@ public class SwingController
     /**
      * Called by SwingViewerBuilder, so that SwingController can setup event handling
      */
+    public void setAttachmentPanel(AttachmentPanel sp) {
+        attachmentPanel = sp;
+    }
+
+    /**
+     * Called by SwingViewerBuilder, so that SwingController can setup event handling
+     */
     public void setThumbnailsPanel(ThumbnailsPanel tn) {
         thumbnailsPanel = tn;
     }
@@ -1051,19 +1060,18 @@ public class SwingController
     }
 
     /**
-     * Tests to see if the PDF document is a collection and should be treaded as such.
+     * Tests to see if the PDF document is a collection and should be treated as such.
      *
      * @return true if PDF collection otherwise false.
      */
     public boolean isPdfCollection() {
         Catalog catalog = document.getCatalog();
-        if (catalog.getNames() != null && catalog.getNames().getEmbeddedFilesNameTree() != null
-                && catalog.getNames().getEmbeddedFilesNameTree().getRoot() != null) {
+        HashMap collection = catalog.getCollection();
+        if (collection != null ) {
             // one final check as some docs will have meta data but will specify a page mode.
-            if (catalog.getObject(Catalog.PAGEMODE_KEY) == null ||
-                    ((Name) catalog.getObject(Catalog.PAGEMODE_KEY)).getName().equalsIgnoreCase("UseAttachments")) {
-                // check to see that at least one of the files is a PDF
-                NameTree embeddedFilesNameTree = catalog.getNames().getEmbeddedFilesNameTree();
+            // check to see that at least one of the files is a PDF
+            if (catalog.getEmbeddedFilesNameTree() != null) {
+                NameTree embeddedFilesNameTree = catalog.getEmbeddedFilesNameTree();
                 java.util.List filePairs = embeddedFilesNameTree.getNamesAndValues();
                 boolean found = false;
                 if (filePairs != null) {
@@ -1158,14 +1166,14 @@ public class SwingController
                             messageBundle.getString("viewer.toolbar.hideUtilityPane.label") :
                             messageBundle.getString("viewer.toolbar.showUtilityPane.label"));
         }
-        setEnabled(showHideUtilityPaneMenuItem, opened && utilityTabbedPane != null && !pdfCollection);
+        setEnabled(showHideUtilityPaneMenuItem, opened && utilityTabbedPane != null );
         setEnabled(searchMenuItem, opened && searchPanel != null && !pdfCollection);
         setEnabled(goToPageMenuItem, opened && nPages > 1 && !pdfCollection);
 
         setEnabled(saveAsFileButton, opened);
         setEnabled(printButton, opened && canPrint && !pdfCollection);
         setEnabled(searchButton, opened && searchPanel != null && !pdfCollection);
-        setEnabled(showHideUtilityPaneButton, opened && utilityTabbedPane != null && !pdfCollection);
+        setEnabled(showHideUtilityPaneButton, opened && utilityTabbedPane != null );
         setEnabled(currentPageNumberTextField, opened && nPages > 1 && !pdfCollection);
         if (numberOfPagesLabel != null) {
 
@@ -1725,9 +1733,6 @@ public class SwingController
                     if (viewer != null) {
                         viewer.toFront();
                         viewer.requestFocus();
-                        Graphics g = viewer.getGraphics();
-                        if (g != null)
-                            viewer.paint(g);
                     }
                     openFileInSomeViewer(file);
                 } else {
@@ -1876,9 +1881,6 @@ public class SwingController
                 if (viewer != null) {
                     viewer.toFront();
                     viewer.requestFocus();
-                    Graphics g = viewer.getGraphics();
-                    if (g != null)
-                        viewer.paint(g);
                 }
                 openURLInSomeViewer(urlAccess.url);
             }
@@ -2224,12 +2226,27 @@ public class SwingController
         if (utilityTabbedPane != null) {
             // Page mode by default is UseNone, where other options are, UseOutlines,
             // UseThumbs, FullScreen (ignore), UseOC(ignore), Use Attachements(ignore);
-            tmp = catalog.getObject(Catalog.PAGEMODE_KEY);
-            if (tmp != null && tmp instanceof Name) {
-                String pageMode = ((Name) tmp).getName();
-                showUtilityPane = pageMode.equalsIgnoreCase("UseOutlines") ||
-                        pageMode.equalsIgnoreCase("UseOC") ||
-                        pageMode.equalsIgnoreCase("UseThumbs");
+            Name pageMode = catalog.getPageMode();
+            showUtilityPane = pageMode.equals(Catalog.PAGE_MODE_USE_OUTLINES_VALUE) ||
+                    pageMode.equals(Catalog.PAGE_MODE_OPTIONAL_CONTENT_VALUE) ||
+                    pageMode.equals(Catalog.PAGE_MODE_USE_ATTACHMENTS_VALUE) ||
+                    pageMode.equals(Catalog.PAGE_MODE_USE_THUMBS_VALUE);
+        }
+
+        // selected the utility tab defined by the page mode key
+        if (showUtilityPane){
+            Name pageMode = catalog.getPageMode();
+            if (pageMode.equals(Catalog.PAGE_MODE_USE_OUTLINES_VALUE)){
+                utilityTabbedPane.setSelectedComponent(outlinesScrollPane);
+            }else if (pageMode.equals(Catalog.PAGE_MODE_OPTIONAL_CONTENT_VALUE)){
+                utilityTabbedPane.setSelectedComponent(layersPanel);
+            }else if (pageMode.equals(Catalog.PAGE_MODE_USE_ATTACHMENTS_VALUE) ){
+                utilityTabbedPane.setSelectedComponent(attachmentPanel);
+            }else if (pageMode.equals(Catalog.PAGE_MODE_USE_THUMBS_VALUE)){
+                utilityTabbedPane.setSelectedComponent(thumbnailsPanel);
+            }else{
+                // Catalog.PAGE_MODE_USE_NONE_VALUE
+                showUtilityPane = false;
             }
         }
 
@@ -2242,6 +2259,10 @@ public class SwingController
 
         if (signaturesPanel != null) {
             signaturesPanel.setDocument(document);
+        }
+
+        if (attachmentPanel != null) {
+            attachmentPanel.setDocument(document);
         }
 
         // Refresh the properties manager object if we don't already have one
@@ -2279,7 +2300,6 @@ public class SwingController
                     utilityTabbedPane.setEnabledAt(
                             utilityTabbedPane.indexOfComponent(outlinesScrollPane),
                             true);
-                    utilityTabbedPane.setSelectedComponent(outlinesScrollPane);
                 }
             }
         } else {
@@ -2289,12 +2309,6 @@ public class SwingController
                             utilityTabbedPane.indexOfComponent(outlinesScrollPane),
                             false);
                 }
-            }
-
-            // Try to select the search panel
-            if (!safelySelectUtilityPanel(searchPanel)) {
-                // If that fails, try to select the annotationPanel
-                safelySelectUtilityPanel(annotationPanel);
             }
         }
 
@@ -2329,6 +2343,20 @@ public class SwingController
                         true);
             }
         }
+        // check if there are any attachments and enable/disable the tab as needed
+        if (layersPanel != null && utilityTabbedPane != null && catalog.getEmbeddedFilesNameTree() != null) {
+            NameTree embeddedFilesNameTree = catalog.getEmbeddedFilesNameTree();
+            if (embeddedFilesNameTree != null &&
+                    embeddedFilesNameTree.getRoot() != null) {
+                utilityTabbedPane.setEnabledAt(
+                        utilityTabbedPane.indexOfComponent(attachmentPanel),
+                        true);
+            }
+        }else {
+            utilityTabbedPane.setEnabledAt(
+                    utilityTabbedPane.indexOfComponent(attachmentPanel),
+                    false);
+        }
         // check if there are signatures and enable/disable the tab as needed
         boolean signaturesExist = document.getCatalog().getInteractiveForm() != null &&
                 document.getCatalog().getInteractiveForm().isSignatureFields();
@@ -2337,10 +2365,6 @@ public class SwingController
                 utilityTabbedPane.setEnabledAt(
                         utilityTabbedPane.indexOfComponent(signaturesPanel),
                         true);
-                // shows the signature pain on load.
-//                setUtilityPaneVisible(true);
-//                utilityTabbedPane.setSelectedIndex(utilityTabbedPane.indexOfComponent(signaturesPanel));
-
             } else {
                 utilityTabbedPane.setEnabledAt(
                         utilityTabbedPane.indexOfComponent(signaturesPanel),
@@ -2390,6 +2414,10 @@ public class SwingController
 
         if (layersPanel != null) {
             layersPanel.setDocument(null);
+        }
+
+        if (attachmentPanel != null) {
+            attachmentPanel.setDocument(null);
         }
 
         if (signaturesPanel != null) {
@@ -2568,6 +2596,9 @@ public class SwingController
         }
         if (layersPanel != null) {
             layersPanel.dispose();
+        }
+        if (attachmentPanel != null) {
+            attachmentPanel.dispose();
         }
         if (signaturesPanel != null) {
             signaturesPanel.dispose();
@@ -3691,8 +3722,10 @@ public class SwingController
      */
     public void showSearchPanel() {
         if (utilityTabbedPane != null && searchPanel != null) {
-            // toggle the utility pane visibility
-            toggleUtilityPaneVisibility();
+            // make sure the utility pane is visible
+            if (!utilityTabbedPane.isVisible()){
+                setUtilityPaneVisible(true);
+            }
 
             // if utility pane is shown then select the search tab and request focus
             if (isUtilityPaneVisible()) {
@@ -4030,8 +4063,8 @@ public class SwingController
                             // get the text.
                             StringSelection stringSelection = new StringSelection(
                                     documentViewController.getSelectedText());
-                            Toolkit.getDefaultToolkit().getSystemClipboard().
-                                    setContents(stringSelection, null);
+                            Toolkit.getDefaultToolkit().getSystemClipboard()
+                                    .setContents(stringSelection, stringSelection);
                         } else {
                             Runnable doSwingWork = new Runnable() {
                                 public void run() {
@@ -4193,7 +4226,8 @@ public class SwingController
                     // get instance of the font factory
                     FontFactory.getInstance().toggleAwtFontSubstitution();
                     // refresh the document, refresh will happen by the component.
-                    documentViewController.getDocumentView().getViewModel().invalidate();
+                    ((AbstractDocumentView)documentViewController.getDocumentView()).firePropertyChange(
+                            PropertyConstants.DOCUMENT_VIEW_DEMO_MODE_CHANGE, false, true);
                     doSetFocus = true;
                 }
             }

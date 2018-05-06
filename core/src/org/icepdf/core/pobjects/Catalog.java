@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2016 ICEsoft Technologies Inc.
+ * Copyright 2006-2017 ICEsoft Technologies Canada Corp.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -60,6 +60,13 @@ public class Catalog extends Dictionary {
     public static final Name METADATA_KEY = new Name("Metadata");
     public static final Name PERMS_KEY = new Name("Perms");
 
+    public static final Name PAGE_MODE_USE_NONE_VALUE = new Name("UseNone");
+    public static final Name PAGE_MODE_USE_OUTLINES_VALUE = new Name("UseOutlines");
+    public static final Name PAGE_MODE_USE_THUMBS_VALUE = new Name("UseThumbs");
+    public static final Name PAGE_MODE_FULL_SCREEN_VALUE = new Name("FullScreen");
+    public static final Name PAGE_MODE_OPTIONAL_CONTENT_VALUE = new Name("UseOC");
+    public static final Name PAGE_MODE_USE_ATTACHMENTS_VALUE = new Name("UseAttachments");
+
     private PageTree pageTree;
     private Outlines outlines;
     private Names names;
@@ -94,7 +101,7 @@ public class Catalog extends Dictionary {
     /**
      * Initiate the PageTree.
      */
-    public synchronized void init() {
+    public synchronized void init() throws InterruptedException {
         Object tmp = library.getObject(entries, PAGES_KEY);
         pageTree = null;
         if (tmp instanceof PageTree) {
@@ -105,7 +112,7 @@ public class Catalog extends Dictionary {
         else if (tmp instanceof HashMap) {
             pageTree = new PageTree(library, (HashMap) tmp);
         }
-        // malformed cornercase, just have a page object, instead of tree.
+        // malformed corner case, just have a page object, instead of tree.
         else if (tmp instanceof Page) {
             Page tmpPage = (Page) tmp;
             HashMap<String, Object> tmpPages = new HashMap<String, Object>();
@@ -167,6 +174,30 @@ public class Catalog extends Dictionary {
     }
 
     /**
+     * A collection dictionary that a conforming reader shall use to enhance the presentation of file attachments
+     * stored in the PDF document.
+     *
+     * @return collection dictionary.
+     */
+    public HashMap getCollection() {
+        return library.getDictionary(entries, COLLECTION_KEY);
+    }
+
+    /**
+     * A name object specifying how the document shall be displayed when opened:
+     *
+     * @return one of the PageMode value contants,  default is Default value: UseNone.
+     */
+    public Name getPageMode() {
+        Name name = library.getName(entries, PAGEMODE_KEY);
+        if (name == null) {
+            return PAGE_MODE_USE_NONE_VALUE;
+        } else {
+            return name;
+        }
+    }
+
+    /**
      * Gets the document's Names dictionary.  The Names dictionary contains
      * a category of objects in a PDF file which can be referred to by name
      * rather than by object reference.
@@ -177,6 +208,24 @@ public class Catalog extends Dictionary {
     public Names getNames() {
         return names;
     }
+
+    /**
+     * Gets the Names object's embedded files name tree if present.  The root node is also check to make sure
+     * the tree has values.
+     *
+     * @return A name tree mapping name strings to file specifications for embedded
+     * file streams.
+     */
+    public NameTree getEmbeddedFilesNameTree() {
+        if (names != null) {
+            NameTree nameTree = names.getEmbeddedFilesNameTree();
+            if (nameTree != null && nameTree.getRoot() != null) {
+                return nameTree;
+            }
+        }
+        return null;
+    }
+
 
     /**
      * Gets a dictionary of names and corresponding destinations.

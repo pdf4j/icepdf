@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2016 ICEsoft Technologies Inc.
+ * Copyright 2006-2017 ICEsoft Technologies Canada Corp.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -35,12 +35,6 @@ import java.awt.event.MouseEvent;
  */
 @SuppressWarnings("serial")
 public class TwoColumnPageView extends AbstractDocumentView {
-
-    protected JScrollPane documentScrollpane;
-
-    protected boolean disposing;
-
-    protected JPanel pagesPanel;
 
     protected int viewAlignment;
 
@@ -78,7 +72,6 @@ public class TwoColumnPageView extends AbstractDocumentView {
                             this.documentScrollpane, this, currentPageChanger);
         }
     }
-
 
     private void buildGUI() {
         // add all page components to gridlayout panel

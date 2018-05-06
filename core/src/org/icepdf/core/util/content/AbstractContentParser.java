@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2016 ICEsoft Technologies Inc.
+ * Copyright 2006-2017 ICEsoft Technologies Canada Corp.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -46,6 +46,7 @@ public abstract class AbstractContentParser implements ContentParser {
             Logger.getLogger(AbstractContentParser.class.toString());
     private static boolean disableTransparencyGroups;
     private static boolean enabledOverPrint;
+
     static {
         // decide if large images will be scaled
         disableTransparencyGroups =
@@ -162,7 +163,7 @@ public abstract class AbstractContentParser implements ContentParser {
      * @param source content stream source.
      * @return vector where each entry is the text extracted from a text block.
      */
-    public abstract Shapes parseTextBlocks(byte[][] source) throws UnsupportedEncodingException;
+    public abstract Shapes parseTextBlocks(byte[][] source) throws UnsupportedEncodingException, InterruptedException;
 
     protected static void consume_G(GraphicsState graphicState, Stack stack,
                                     Library library) {
@@ -601,8 +602,8 @@ public abstract class AbstractContentParser implements ContentParser {
                 // need to capture the alpha which is only possible
                 // by paint the xObject to an image.
                 if (!disableTransparencyGroups &&
-                        ((formXObject.getBBox().getWidth() < Short.MAX_VALUE && formXObject.getBBox().getWidth() > 1) &&
-                                (formXObject.getBBox().getHeight() < Short.MAX_VALUE && formXObject.getBBox().getHeight() > 1)
+                        ((formXObject.getBBox().getWidth() < FormDrawCmd.MAX_IMAGE_SIZE && formXObject.getBBox().getWidth() > 1) &&
+                                (formXObject.getBBox().getHeight() < FormDrawCmd.MAX_IMAGE_SIZE && formXObject.getBBox().getHeight() > 1)
                                 && (formXObject.getExtGState() != null &&
                                 (formXObject.getExtGState().getSMask() != null || formXObject.getExtGState().getBlendingMode() != null
                                         || (formXObject.getExtGState().getNonStrokingAlphConstant() < 1
@@ -700,19 +701,32 @@ public abstract class AbstractContentParser implements ContentParser {
                         dash = Math.abs(((Number) dashVector.get(i)).floatValue());
                         // java has a hard time with painting dash array with values < 0.05.
                         // null the dash array as we can't pain it PDF-966.
-                        if (dash < 0.05f) {
-                            nullArray = true;
-                        }
+                        if (dash < 0.05f) nullArray = true;
                         dashArray[i] = dash;
                     }
                 }
                 // corner case check to see if the dash array contains a first element
                 // that is very different then second which is likely the result of
-                // a MS office bug where the first element of the array isn't scaled to
+                // a itext/MS office bug where a dash element of the array isn't scaled to
                 // user space.
-                if (dashArray.length > 1 && dashArray[0] != 0 &&
-                        dashArray[0] < dashArray[1] / 10000) {
-                    dashArray[0] = dashArray[1];
+                if (dashArray.length > 1 && dashArray[0] != 0) {
+                    boolean isOffice = false;
+                    int spread = 10000;
+                    for (int i = 0, max = dashArray.length - 1; i < max; i++) {
+                        float diff = dashArray[i] - dashArray[i + 1];
+                        if (diff > spread || diff < -spread) {
+                            isOffice = true;
+                            break;
+                        }
+                    }
+                    if (isOffice) {
+                        for (int i = 0, max = dashArray.length; i < max; i++) {
+                            if (dashArray[i] < 10) {
+                                // scale to PDF space.
+                                dashArray[i] = dashArray[i] * 1000;
+                            }
+                        }
+                    }
                 }
                 // null the dash array if one of the dash values was less then 0.05.
                 if (nullArray) {
@@ -816,7 +830,7 @@ public abstract class AbstractContentParser implements ContentParser {
                 // corner cases:
                 // get the first pages resources, no need to lock the page, already locked.
                 Page page = resources.getLibrary().getCatalog().getPageTree().getPage(0);
-                page.init();
+                page.initPageResources();
                 Resources res = page.getResources();
                 // try and get a font off the first page.
                 Object pageFonts = res.getEntries().get(Resources.FONT_KEY);
@@ -1071,7 +1085,7 @@ public abstract class AbstractContentParser implements ContentParser {
 
     protected static GeneralPath consume_S(GraphicsState graphicState,
                                            Shapes shapes,
-                                           GeneralPath geometricPath) {
+                                           GeneralPath geometricPath) throws InterruptedException {
         if (geometricPath != null) {
             commonStroke(graphicState, shapes, geometricPath);
             geometricPath = null;
@@ -1082,7 +1096,7 @@ public abstract class AbstractContentParser implements ContentParser {
     protected static GeneralPath consume_F(GraphicsState graphicState,
                                            Shapes shapes,
                                            GeneralPath geometricPath)
-            throws NoninvertibleTransformException {
+            throws NoninvertibleTransformException, InterruptedException {
         if (geometricPath != null) {
             geometricPath.setWindingRule(GeneralPath.WIND_NON_ZERO);
             commonFill(shapes, graphicState, geometricPath);
@@ -1094,7 +1108,7 @@ public abstract class AbstractContentParser implements ContentParser {
     protected static GeneralPath consume_f(GraphicsState graphicState,
                                            Shapes shapes,
                                            GeneralPath geometricPath)
-            throws NoninvertibleTransformException {
+            throws NoninvertibleTransformException, InterruptedException {
         if (geometricPath != null) {
             geometricPath.setWindingRule(GeneralPath.WIND_NON_ZERO);
             commonFill(shapes, graphicState, geometricPath);
@@ -1129,7 +1143,7 @@ public abstract class AbstractContentParser implements ContentParser {
     protected static void consume_BDC(Stack stack,
                                       Shapes shapes,
                                       LinkedList<OptionalContents> oCGs,
-                                      Resources resources) {
+                                      Resources resources) throws InterruptedException {
         Object properties = stack.pop();// properties
         Name tag = (Name) stack.pop();// tag
         OptionalContents optionalContents = null;
@@ -1177,7 +1191,7 @@ public abstract class AbstractContentParser implements ContentParser {
     protected static void consume_BMC(Stack stack,
                                       Shapes shapes,
                                       LinkedList<OptionalContents> oCGs,
-                                      Resources resources) {
+                                      Resources resources) throws InterruptedException {
         Object properties = stack.pop();// properties
         // try and process the Optional content.
         if (properties instanceof Name && resources != null) {
@@ -1202,7 +1216,7 @@ public abstract class AbstractContentParser implements ContentParser {
     protected static GeneralPath consume_f_star(GraphicsState graphicState,
                                                 Shapes shapes,
                                                 GeneralPath geometricPath)
-            throws NoninvertibleTransformException {
+            throws NoninvertibleTransformException, InterruptedException {
         if (geometricPath != null) {
             // need to apply pattern..
             geometricPath.setWindingRule(GeneralPath.WIND_EVEN_ODD);
@@ -1215,7 +1229,7 @@ public abstract class AbstractContentParser implements ContentParser {
     protected static GeneralPath consume_b(GraphicsState graphicState,
                                            Shapes shapes,
                                            GeneralPath geometricPath)
-            throws NoninvertibleTransformException {
+            throws NoninvertibleTransformException, InterruptedException {
         if (geometricPath != null) {
             geometricPath.setWindingRule(GeneralPath.WIND_NON_ZERO);
             geometricPath.closePath();
@@ -1268,7 +1282,7 @@ public abstract class AbstractContentParser implements ContentParser {
     protected static GeneralPath consume_B(GraphicsState graphicState,
                                            Shapes shapes,
                                            GeneralPath geometricPath)
-            throws NoninvertibleTransformException {
+            throws NoninvertibleTransformException, InterruptedException {
         if (geometricPath != null) {
             geometricPath.setWindingRule(GeneralPath.WIND_NON_ZERO);
             commonFill(shapes, graphicState, geometricPath);
@@ -1291,7 +1305,7 @@ public abstract class AbstractContentParser implements ContentParser {
 
     protected static GeneralPath consume_s(GraphicsState graphicState,
                                            Shapes shapes,
-                                           GeneralPath geometricPath) {
+                                           GeneralPath geometricPath) throws InterruptedException {
         if (geometricPath != null) {
             geometricPath.closePath();
             commonStroke(graphicState, shapes, geometricPath);
@@ -1303,7 +1317,7 @@ public abstract class AbstractContentParser implements ContentParser {
     protected static GeneralPath consume_b_star(GraphicsState graphicState,
                                                 Shapes shapes,
                                                 GeneralPath geometricPath)
-            throws NoninvertibleTransformException {
+            throws NoninvertibleTransformException, InterruptedException {
         if (geometricPath != null) {
             geometricPath.setWindingRule(GeneralPath.WIND_EVEN_ODD);
             geometricPath.closePath();
@@ -1336,7 +1350,7 @@ public abstract class AbstractContentParser implements ContentParser {
     protected static GeneralPath consume_B_star(GraphicsState graphicState,
                                                 Shapes shapes,
                                                 GeneralPath geometricPath)
-            throws NoninvertibleTransformException {
+            throws NoninvertibleTransformException, InterruptedException {
         if (geometricPath != null) {
             geometricPath.setWindingRule(GeneralPath.WIND_EVEN_ODD);
             commonStroke(graphicState, shapes, geometricPath);
@@ -1366,7 +1380,7 @@ public abstract class AbstractContentParser implements ContentParser {
 
     public static void consume_sh(GraphicsState graphicState, Stack stack,
                                   Shapes shapes,
-                                  Resources resources) {
+                                  Resources resources) throws InterruptedException {
         Object o = stack.peek();
         // if a name then we are dealing with a pattern.
         if (o instanceof Name) {
@@ -1724,7 +1738,8 @@ public abstract class AbstractContentParser implements ContentParser {
      * @param shapes        current shapes stack
      * @param geometricPath current path.
      */
-    protected static void commonStroke(GraphicsState graphicState, Shapes shapes, GeneralPath geometricPath) {
+    protected static void commonStroke(GraphicsState graphicState, Shapes shapes, GeneralPath geometricPath)
+            throws InterruptedException {
 
         // get current fill alpha and concatenate with overprinting if present
         if (graphicState.isOverprintStroking()) {
@@ -1832,7 +1847,7 @@ public abstract class AbstractContentParser implements ContentParser {
      * @param geometricPath current path.
      */
     protected static void commonFill(Shapes shapes, GraphicsState graphicState, GeneralPath geometricPath)
-            throws NoninvertibleTransformException {
+            throws NoninvertibleTransformException, InterruptedException {
 
         // get current fill alpha and concatenate with overprinting if present
         if (graphicState.isOverprintOther()) {
@@ -1850,8 +1865,6 @@ public abstract class AbstractContentParser implements ContentParser {
         // composite to source.
         else if (graphicState.isKnockOut()) {
             setAlpha(shapes, graphicState, AlphaComposite.SRC, graphicState.getFillAlpha());
-        } else {
-            setAlpha(shapes, graphicState, graphicState.getAlphaRule(), graphicState.getFillAlpha());
         }
 
         // found a PatternColor

@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2016 ICEsoft Technologies Inc.
+ * Copyright 2006-2017 ICEsoft Technologies Canada Corp.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -46,7 +46,7 @@ public class ShapesDrawCmd extends AbstractDrawCmd {
     public Shape paintOperand(Graphics2D g, Page parentPage, Shape currentShape,
                               Shape clip, AffineTransform base,
                               OptionalContentState optionalContentState,
-                              boolean paintAlpha, PaintTimer paintTimer) {
+                              boolean paintAlpha, PaintTimer paintTimer) throws InterruptedException {
         if (optionalContentState.isVisible() &&
                 shapes != null) {
             shapes.setPageParent(parentPage);

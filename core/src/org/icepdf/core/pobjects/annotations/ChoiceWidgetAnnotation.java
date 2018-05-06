@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2016 ICEsoft Technologies Inc.
+ * Copyright 2006-2017 ICEsoft Technologies Canada Corp.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -99,6 +99,7 @@ public class ChoiceWidgetAnnotation extends AbstractWidgetAnnotation<ChoiceField
                 currentContentStream = buildChoiceComboContents(currentContentStream);
             } else {
                 // todo no stream and we will need to build one.
+                currentContentStream = "";
             }
         } else {
             // build out the complex choice list content stream
@@ -106,6 +107,7 @@ public class ChoiceWidgetAnnotation extends AbstractWidgetAnnotation<ChoiceField
                 currentContentStream = buildChoiceListContents(currentContentStream);
             } else {
                 // todo no stream and we will need to build one.
+                currentContentStream = "";
             }
         }
         // finally create the shapes from the altered stream.
@@ -144,6 +146,7 @@ public class ChoiceWidgetAnnotation extends AbstractWidgetAnnotation<ChoiceField
             } else {
                 appearanceStream.getEntries().remove(Stream.FILTER_KEY);
             }
+            appearanceStream.init();
         }
     }
 
@@ -151,7 +154,7 @@ public class ChoiceWidgetAnnotation extends AbstractWidgetAnnotation<ChoiceField
     public void reset() {
         Object oldValue = fieldDictionary.getFieldValue();
         Object tmp = fieldDictionary.getDefaultFieldValue();
-        if (tmp == null){
+        if (tmp == null) {
             FieldDictionary parentFieldDictionary = fieldDictionary.getParent();
             if (parentFieldDictionary != null) {
                 tmp = parentFieldDictionary.getDefaultFieldValue();
@@ -161,7 +164,7 @@ public class ChoiceWidgetAnnotation extends AbstractWidgetAnnotation<ChoiceField
             // apply the default value
             fieldDictionary.setFieldValue(tmp, getPObjectReference());
             changeSupport.firePropertyChange("valueFieldReset", oldValue, tmp);
-        }else{
+        } else {
             // otherwise we remove the key
             fieldDictionary.getEntries().remove(FieldDictionary.V_KEY);
             fieldDictionary.setIndexes(null);
@@ -169,8 +172,8 @@ public class ChoiceWidgetAnnotation extends AbstractWidgetAnnotation<ChoiceField
             FieldDictionary parentFieldDictionary = fieldDictionary.getParent();
             if (parentFieldDictionary != null) {
                 parentFieldDictionary.getEntries().remove(FieldDictionary.V_KEY);
-                if (parentFieldDictionary instanceof ChoiceFieldDictionary){
-                    ((ChoiceFieldDictionary)parentFieldDictionary).setIndexes(null);
+                if (parentFieldDictionary instanceof ChoiceFieldDictionary) {
+                    ((ChoiceFieldDictionary) parentFieldDictionary).setIndexes(null);
                 }
             }
             changeSupport.firePropertyChange("valueFieldReset", oldValue, null);
@@ -200,7 +203,7 @@ public class ChoiceWidgetAnnotation extends AbstractWidgetAnnotation<ChoiceField
                 currentContentStream.substring(0, bmcStart + 3);
         String postEmc = btEnd >= 0 ? currentContentStream.substring(btEnd) :
                 currentContentStream.substring(0, bmcEnd + 3);
-        ;
+
         // marked content which we will use to try and find some data points.
         //String markedContent = currentContentStream.substring(bmcStart, bmcEnd);
 
@@ -211,7 +214,11 @@ public class ChoiceWidgetAnnotation extends AbstractWidgetAnnotation<ChoiceField
         StringBuilder content = new StringBuilder();
         // apply font
         if (fieldDictionary.getDefaultAppearance() != null) {
-            content.append(fieldDictionary.getDefaultAppearance()).append(' ');
+            String markedContent = fieldDictionary.getDefaultAppearance();
+            Page page = getPage();
+            markedContent = fieldDictionary.generateDefaultAppearance(markedContent,
+                    page != null ? page.getResources() : null);
+            content.append(markedContent).append(' ');
         } else { // common font and colour layout for most form elements.
             content.append("/Helv 12 Tf 0 g ");
         }

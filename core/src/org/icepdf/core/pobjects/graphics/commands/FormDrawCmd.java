@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2016 ICEsoft Technologies Inc.
+ * Copyright 2006-2017 ICEsoft Technologies Canada Corp.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -46,8 +46,8 @@ public class FormDrawCmd extends AbstractDrawCmd {
     private static boolean disableXObjectSMask;
 
     // Used to use Max_value but we have a few corner cases where the dimension is +-5 of Short.MAX_VALUE, but
-    // realistically we seldom have enough memory to load anythign bigger then 8000px.  4k+ image are big!
-    private static int MAX_IMAGE_SIZE = 17000; // Short.MAX_VALUE
+    // realistically we seldom have enough memory to load anything bigger then 8000px.  4k+ image are big!
+    public static int MAX_IMAGE_SIZE = 2000; // Short.MAX_VALUE
 
     static {
         // decide if large images will be scaled
@@ -55,7 +55,7 @@ public class FormDrawCmd extends AbstractDrawCmd {
                 Defs.sysPropertyBoolean("org.icepdf.core.disableXObjectSMask",
                         false);
 
-        MAX_IMAGE_SIZE = Defs.sysPropertyInt("org.icepdf.core.maxSmaskImageSize", 17000);
+        MAX_IMAGE_SIZE = Defs.sysPropertyInt("org.icepdf.core.maxSmaskImageSize", MAX_IMAGE_SIZE);
     }
 
     public FormDrawCmd(Form xForm) {
@@ -174,7 +174,8 @@ public class FormDrawCmd extends AbstractDrawCmd {
                 BufferedImage shape = createBufferXObject(parentPage, xForm, null, renderingHints, true);
                 xFormBuffer = ImageUtility.applyExplicitOutline(xFormBuffer, shape);
             }
-//            ImageUtility.displayImage(xFormBuffer, "final" + xForm.getGroup() + " " + xForm.getPObjectReference());
+//            ImageUtility.displayImage(xFormBuffer, "final" + xForm.getGroup() + " " + xForm.getPObjectReference() +
+//                    xFormBuffer.getHeight() + "x" + xFormBuffer.getHeight());
         }
         g.drawImage(xFormBuffer, null, x, y);
         return currentShape;
@@ -252,30 +253,35 @@ public class FormDrawCmd extends AbstractDrawCmd {
         // copy over the rendering hints
         canvas.setRenderingHints(renderingHints);
         // get shapes and paint them.
-        Shapes xFormShapes = xForm.getShapes();
-        if (xFormShapes != null) {
-            xFormShapes.setPageParent(parentPage);
-            // translate the coordinate system as we'll paint the g
-            // graphic at the correctly location later.
-            if (!xForm.isShading()) {
-                canvas.translate(-(int) bBox.getX(), -(int) bBox.getY());
-                canvas.setClip(bBox);
-                xFormShapes.paint(canvas);
-                xFormShapes.setPageParent(null);
-            }
-            // basic support for gradient fills,  still have a few corners cases to work on.
-            else {
-                for (DrawCmd cmd : xFormShapes.getShapes()) {
-                    if (cmd instanceof ShapeDrawCmd && ((ShapeDrawCmd) cmd).getShape() == null) {
-                        Rectangle2D bounds = bBox.getBounds2D();
-                        ((ShapeDrawCmd) cmd).setShape(bounds);
-                    }
+        try {
+            Shapes xFormShapes = xForm.getShapes();
+            if (xFormShapes != null) {
+                xFormShapes.setPageParent(parentPage);
+                // translate the coordinate system as we'll paint the g
+                // graphic at the correctly location later.
+                if (!xForm.isShading()) {
+                    canvas.translate(-(int) bBox.getX(), -(int) bBox.getY());
+                    canvas.setClip(bBox);
+                    xFormShapes.paint(canvas);
+                    xFormShapes.setPageParent(null);
                 }
-                canvas.translate(-x, -y);
-                canvas.setClip(bBox.getBounds2D());
-                xFormShapes.paint(canvas);
-                xFormShapes.setPageParent(null);
+                // basic support for gradient fills,  still have a few corners cases to work on.
+                else {
+                    for (DrawCmd cmd : xFormShapes.getShapes()) {
+                        if (cmd instanceof ShapeDrawCmd && ((ShapeDrawCmd) cmd).getShape() == null) {
+                            Rectangle2D bounds = bBox.getBounds2D();
+                            ((ShapeDrawCmd) cmd).setShape(bounds);
+                        }
+                    }
+                    canvas.translate(-x, -y);
+                    canvas.setClip(bBox.getBounds2D());
+                    xFormShapes.paint(canvas);
+                    xFormShapes.setPageParent(null);
+                }
             }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            logger.fine("Form draw thread interrupted.");
         }
         canvas.dispose();
         return bi;

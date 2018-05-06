@@ -1,5 +1,5 @@
 /*
- * Copyright 2006-2016 ICEsoft Technologies Inc.
+ * Copyright 2006-2017 ICEsoft Technologies Canada Corp.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the
@@ -139,6 +139,9 @@ public class ImageUtility {
      */
     public static BufferedImage createTranslucentCompatibleImage(int width, int height) {
         if (configuration != null) {
+            if (logger.isLoggable(Level.FINER)) {
+                logger.finer("Creating translucent image buffer " + width + "x" + height);
+            }
             return configuration.createCompatibleImage(width, height, Transparency.TRANSLUCENT);
         } else {
             return new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
@@ -201,7 +204,7 @@ public class ImageUtility {
     }
 
     public static void writeImage(final BufferedImage bufferedImage, final String fileName,
-                                  String baseOutputPath){
+                                  String baseOutputPath) {
         try {
             ImageIO.write(bufferedImage, "PNG",
                     new File(baseOutputPath + fileName + ".png"));
@@ -530,7 +533,14 @@ public class ImageUtility {
         baseWidth = baseImage.getWidth();
         baseHeight = baseImage.getHeight();
 
-        BufferedImage argbImage = ImageUtility.createTranslucentCompatibleImage(baseWidth, baseHeight);
+        boolean hasAlpha = ImageUtility.hasAlpha(baseImage);
+        BufferedImage argbImage;
+        if (hasAlpha) {
+            argbImage = baseImage;
+        } else {
+            // aways create a new buffer as we need leave the pevioius image un change for some type of masks.
+            argbImage = ImageUtility.createTranslucentCompatibleImage(baseWidth, baseHeight);
+        }
         int[] srcBand = new int[baseWidth];
         int[] maskBnd = new int[baseWidth];
         // iterate over each band to apply the mask
@@ -564,17 +574,19 @@ public class ImageUtility {
      */
     public static BufferedImage applyBlendingMode(BufferedImage baseImage, Name blendingMode, Color blendColor) {
 
-//        extGState.getBlendingMode().equals("Multiply")
-
-
-        // check to make sure the mask and the image are the same size.
-
         // apply the mask by simply painting white to the base image where
         // the mask specified no colour.
         int baseWidth = baseImage.getWidth();
         int baseHeight = baseImage.getHeight();
 
-        BufferedImage argbImage = ImageUtility.createTranslucentCompatibleImage(baseWidth, baseHeight);
+        boolean hasAlpha = ImageUtility.hasAlpha(baseImage);
+        BufferedImage argbImage;
+        if (hasAlpha) {
+            argbImage = baseImage;
+        } else {
+            // aways create a new buffer as we need leave the pevioius image un change for some type of masks.
+            argbImage = ImageUtility.createTranslucentCompatibleImage(baseWidth, baseHeight);
+        }
         int[] srcBand = new int[baseWidth];
         int[] blendBand = new int[baseWidth];
         int blendColorValue = blendColor.getRGB();
@@ -626,10 +638,14 @@ public class ImageUtility {
         int baseWidth = baseImage.getWidth();
         int baseHeight = baseImage.getHeight();
 
+        boolean hasAlpha = ImageUtility.hasAlpha(baseImage);
         BufferedImage argbImage;
-        // aways create a new buffer as we need leave the pevioius image un change for some type of masks.
-        argbImage = ImageUtility.createTranslucentCompatibleImage(baseWidth, baseHeight);
-
+        if (hasAlpha) {
+            argbImage = baseImage;
+        } else {
+            // aways create a new buffer as we need leave the pevioius image un change for some type of masks.
+            argbImage = ImageUtility.createTranslucentCompatibleImage(baseWidth, baseHeight);
+        }
         int[] srcBand = new int[baseWidth];
         int[] sMaskBand = new int[baseWidth];
         // iterate over each band to apply the mask
@@ -665,9 +681,14 @@ public class ImageUtility {
         int baseWidth = baseImage.getWidth();
         int baseHeight = baseImage.getHeight();
 
+        boolean hasAlpha = ImageUtility.hasAlpha(baseImage);
         BufferedImage argbImage;
-        // aways create a new buffer as we need leave the pevioius image un change for some type of masks.
-        argbImage = ImageUtility.createTranslucentCompatibleImage(baseWidth, baseHeight);
+        if (hasAlpha) {
+            argbImage = baseImage;
+        } else {
+            // aways create a new buffer as we need leave the pevioius image un change for some type of masks.
+            argbImage = ImageUtility.createTranslucentCompatibleImage(baseWidth, baseHeight);
+        }
 
         int[] srcBand = new int[baseWidth];
         int[] sMaskBand = new int[baseWidth];
@@ -720,9 +741,14 @@ public class ImageUtility {
         int baseWidth = baseImage.getWidth();
         int baseHeight = baseImage.getHeight();
 
+        boolean hasAlpha = ImageUtility.hasAlpha(baseImage);
         BufferedImage argbImage;
-        // aways create a new buffer as we need leave the pevioius image un change for some type of masks.
-        argbImage = ImageUtility.createTranslucentCompatibleImage(baseWidth, baseHeight);
+        if (hasAlpha) {
+            argbImage = baseImage;
+        } else {
+            // aways create a new buffer as we need leave the pevioius image un change for some type of masks.
+            argbImage = ImageUtility.createTranslucentCompatibleImage(baseWidth, baseHeight);
+        }
 
         int[] srcBand = new int[baseWidth];
         int[] sMaskBand = new int[baseWidth];
@@ -798,24 +824,29 @@ public class ImageUtility {
      */
     protected static BufferedImage applyIndexColourModel(
             WritableRaster wr, PColorSpace colourSpace, int bitsPerComponent) {
-        BufferedImage img;
-        colourSpace.init();
-        // build out the colour table.
-        Color[] colors = ((Indexed) colourSpace).accessColorTable();
-        int colorsLength = (colors == null) ? 0 : colors.length;
-        int[] cmap = new int[256];
-        for (int i = 0; i < colorsLength; i++) {
-            cmap[i] = colors[i].getRGB();
+        BufferedImage img = null;
+        try {
+            colourSpace.init();
+            // build out the colour table.
+            Color[] colors = ((Indexed) colourSpace).accessColorTable();
+            int colorsLength = (colors == null) ? 0 : colors.length;
+            int[] cmap = new int[256];
+            for (int i = 0; i < colorsLength; i++) {
+                cmap[i] = colors[i].getRGB();
+            }
+            for (int i = colorsLength; i < cmap.length; i++) {
+                cmap[i] = 0xFF000000;
+            }
+            // build a new buffer with indexed colour model.
+            DataBuffer db = wr.getDataBuffer();
+            //        SampleModel sm = new PixelInterleavedSampleModel(db.getDataType(), width, height, 1, width, new int[]{0});
+            //        WritableRaster wr = Raster.createWritableRaster(sm, db, new Point(0, 0));
+            ColorModel cm = new IndexColorModel(bitsPerComponent, cmap.length, cmap, 0, true, -1, db.getDataType());
+            img = new BufferedImage(cm, wr, false, null);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            logger.fine("Indexed colour model initialization interrupted.");
         }
-        for (int i = colorsLength; i < cmap.length; i++) {
-            cmap[i] = 0xFF000000;
-        }
-        // build a new buffer with indexed colour model.
-        DataBuffer db = wr.getDataBuffer();
-//        SampleModel sm = new PixelInterleavedSampleModel(db.getDataType(), width, height, 1, width, new int[]{0});
-//        WritableRaster wr = Raster.createWritableRaster(sm, db, new Point(0, 0));
-        ColorModel cm = new IndexColorModel(bitsPerComponent, cmap.length, cmap, 0, true, -1, db.getDataType());
-        img = new BufferedImage(cm, wr, false, null);
         return img;
     }
 
@@ -825,63 +856,66 @@ public class ImageUtility {
             throws InvocationTargetException, IllegalAccessException, NoSuchMethodException, IOException, ClassNotFoundException, InstantiationException {
         BufferedImage tmpImage;
 
-        // ICEpdf-pro has a commercial license of the levigo library but the OS library can use it to if the project
-        // can comply with levigo's open source licence.
-        Class<?> levigoJBIG2ImageReaderClass = Class.forName("com.levigo.jbig2.JBIG2ImageReader");
-        Class<?> jbig2ImageReaderSpiClass = Class.forName("com.levigo.jbig2.JBIG2ImageReaderSpi");
-        Class<?> jbig2GlobalsClass = Class.forName("com.levigo.jbig2.JBIG2Globals");
-        Object jbig2ImageReaderSpi = jbig2ImageReaderSpiClass.newInstance();
-        Constructor levigoJbig2DecoderClassConstructor =
-                levigoJBIG2ImageReaderClass.getDeclaredConstructor(javax.imageio.spi.ImageReaderSpi.class);
-        Object levigoJbig2Reader = levigoJbig2DecoderClassConstructor.newInstance(jbig2ImageReaderSpi);
-        // set the input
-        Class partypes[] = new Class[1];
-        partypes[0] = Object.class;
-        Object arglist[] = new Object[1];
-        arglist[0] = imageInputStream;
-        Method setInput =
-                levigoJBIG2ImageReaderClass.getMethod("setInput", partypes);
-        setInput.invoke(levigoJbig2Reader, arglist);
-        // apply deocde params if any.
-        if (decodeParms != null) {
-            if (globalsStream != null) {
-                byte[] globals = globalsStream.getDecodedStreamBytes(0);
-                if (globals != null && globals.length > 0) {
-                    partypes = new Class[1];
-                    partypes[0] = javax.imageio.stream.ImageInputStream.class;
-                    arglist = new Object[1];
-                    arglist[0] = ImageIO.createImageInputStream(new ByteArrayInputStream(globals));
-                    Method processGlobals =
-                            levigoJBIG2ImageReaderClass.getMethod("processGlobals", partypes);
-                    Object globalSegments = processGlobals.invoke(levigoJbig2Reader, arglist);
-                    if (globalSegments != null) {
-                        // invoked encoder.setGlobalData(globals);
+        try {
+            // ICEpdf-pro has a commercial license of the levigo library but the OS library can use it to if the project
+            // can comply with levigo's open source licence.
+            Class<?> levigoJBIG2ImageReaderClass = Class.forName("com.levigo.jbig2.JBIG2ImageReader");
+            Class<?> jbig2ImageReaderSpiClass = Class.forName("com.levigo.jbig2.JBIG2ImageReaderSpi");
+            Class<?> jbig2GlobalsClass = Class.forName("com.levigo.jbig2.JBIG2Globals");
+            Object jbig2ImageReaderSpi = jbig2ImageReaderSpiClass.newInstance();
+            Constructor levigoJbig2DecoderClassConstructor =
+                    levigoJBIG2ImageReaderClass.getDeclaredConstructor(javax.imageio.spi.ImageReaderSpi.class);
+            Object levigoJbig2Reader = levigoJbig2DecoderClassConstructor.newInstance(jbig2ImageReaderSpi);
+            // set the input
+            Class partypes[] = new Class[1];
+            partypes[0] = Object.class;
+            Object arglist[] = new Object[1];
+            arglist[0] = imageInputStream;
+            Method setInput =
+                    levigoJBIG2ImageReaderClass.getMethod("setInput", partypes);
+            setInput.invoke(levigoJbig2Reader, arglist);
+            // apply deocde params if any.
+            if (decodeParms != null) {
+                if (globalsStream != null) {
+                    byte[] globals = globalsStream.getDecodedStreamBytes(0);
+                    if (globals != null && globals.length > 0) {
                         partypes = new Class[1];
-                        partypes[0] = jbig2GlobalsClass;
+                        partypes[0] = ImageInputStream.class;
                         arglist = new Object[1];
-                        arglist[0] = globalSegments;
-                        // pass the segment data back into the decoder.
-                        Method setGlobalData =
-                                levigoJBIG2ImageReaderClass.getMethod("setGlobals", partypes);
-                        setGlobalData.invoke(levigoJbig2Reader, arglist);
+                        arglist[0] = ImageIO.createImageInputStream(new ByteArrayInputStream(globals));
+                        Method processGlobals =
+                                levigoJBIG2ImageReaderClass.getMethod("processGlobals", partypes);
+                        Object globalSegments = processGlobals.invoke(levigoJbig2Reader, arglist);
+                        if (globalSegments != null) {
+                            // invoked encoder.setGlobalData(globals);
+                            partypes = new Class[1];
+                            partypes[0] = jbig2GlobalsClass;
+                            arglist = new Object[1];
+                            arglist[0] = globalSegments;
+                            // pass the segment data back into the decoder.
+                            Method setGlobalData =
+                                    levigoJBIG2ImageReaderClass.getMethod("setGlobals", partypes);
+                            setGlobalData.invoke(levigoJbig2Reader, arglist);
+                        }
                     }
                 }
             }
-        }
-        partypes = new Class[1];
-        partypes[0] = int.class;
-        arglist = new Object[1];
-        arglist[0] = 0;
-        Method read =
-                levigoJBIG2ImageReaderClass.getMethod("read", partypes);
-        tmpImage = (BufferedImage) read.invoke(levigoJbig2Reader, arglist);
-        // call dispose on the reader
-        Method dispose =
-                levigoJBIG2ImageReaderClass.getMethod("dispose", (Class<?>[]) null);
-        dispose.invoke(levigoJbig2Reader);
-        // dispose the stream
-        if (imageInputStream != null) {
-            imageInputStream.close();
+            partypes = new Class[1];
+            partypes[0] = int.class;
+            arglist = new Object[1];
+            arglist[0] = 0;
+            Method read =
+                    levigoJBIG2ImageReaderClass.getMethod("read", partypes);
+            tmpImage = (BufferedImage) read.invoke(levigoJbig2Reader, arglist);
+            // call dispose on the reader
+            Method dispose =
+                    levigoJBIG2ImageReaderClass.getMethod("dispose", (Class<?>[]) null);
+            dispose.invoke(levigoJbig2Reader);
+        } finally {
+            // dispose the stream
+            if (imageInputStream != null) {
+                imageInputStream.close();
+            }
         }
         return tmpImage;
     }
@@ -1265,7 +1299,11 @@ public class ImageUtility {
             }
         } else if (colourSpace instanceof Indexed) {
             if (bitsPerComponent == 1 || bitsPerComponent == 2 || bitsPerComponent == 4) {
-                colourSpace.init();
+                try {
+                    colourSpace.init();
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
                 Color[] colors = ((Indexed) colourSpace).accessColorTable();
                 int[] cmap = new int[(colors == null) ? 0 : colors.length];
                 for (int i = 0; i < cmap.length; i++) {
@@ -1293,7 +1331,11 @@ public class ImageUtility {
                     img = new BufferedImage(cm, wr, false, null);
                 }
             } else if (bitsPerComponent == 8) {
-                colourSpace.init();
+                try {
+                    colourSpace.init();
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
                 Color[] colors = ((Indexed) colourSpace).accessColorTable();
                 int colorsLength = (colors == null) ? 0 : colors.length;
                 int[] cmap = new int[256];
