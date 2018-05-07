@@ -613,7 +613,9 @@ public abstract class AbstractContentParser implements ContentParser {
                         ((formXObject.getBBox().getWidth() < FormDrawCmd.MAX_IMAGE_SIZE && formXObject.getBBox().getWidth() > 1) &&
                                 (formXObject.getBBox().getHeight() < FormDrawCmd.MAX_IMAGE_SIZE && formXObject.getBBox().getHeight() > 1)
                                 && (formXObject.getExtGState() != null &&
-                                (formXObject.getExtGState().getSMask() != null || formXObject.getExtGState().getBlendingMode() != null
+                                (formXObject.getExtGState().getSMask() != null ||
+                                        (formXObject.getExtGState().getBlendingMode() != null &&
+                                                !formXObject.getExtGState().getBlendingMode().equals(BlendComposite.NORMAL_VALUE))
                                         || (formXObject.getExtGState().getNonStrokingAlphConstant() < 1
                                         && formXObject.getExtGState().getNonStrokingAlphConstant() > 0)))
                         )) {
@@ -718,16 +720,20 @@ public abstract class AbstractContentParser implements ContentParser {
                 if (dashArray.length > 1 && dashArray[0] != 0) {
                     boolean isOffice = false;
                     int spread = 10000;
+                    double min = dashArray[0];
                     for (int i = 0, max = dashArray.length - 1; i < max; i++) {
                         float diff = dashArray[i] - dashArray[i + 1];
-                        if (diff > spread || diff < -spread) {
+                        if (Math.abs(diff) > spread) {
                             isOffice = true;
-                            break;
+                        }
+                        if (dashArray[i] < min){
+                            min = dashArray[i];
                         }
                     }
                     if (isOffice) {
+                        min = Math.ceil(min);
                         for (int i = 0, max = dashArray.length; i < max; i++) {
-                            if (dashArray[i] < 10) {
+                            if (dashArray[i] <= min && dashArray[i] < 100) {
                                 // scale to PDF space.
                                 dashArray[i] = dashArray[i] * 1000;
                             }
@@ -2000,7 +2006,7 @@ public abstract class AbstractContentParser implements ContentParser {
         AffineTransform horizontalScalingTransform =
                 new AffineTransform(
                         af.getScaleX() * hScaling,
-                        af.getShearY(),
+                        af.getShearY() * hScaling,
                         af.getShearX(),
                         af.getScaleY(),
                         af.getTranslateX(), af.getTranslateY());
