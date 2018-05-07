@@ -17,6 +17,7 @@ package org.icepdf.core.util.content;
 
 import org.icepdf.core.pobjects.*;
 import org.icepdf.core.pobjects.fonts.FontFile;
+import org.icepdf.core.pobjects.fonts.FontManager;
 import org.icepdf.core.pobjects.graphics.*;
 import org.icepdf.core.pobjects.graphics.commands.*;
 import org.icepdf.core.pobjects.graphics.text.GlyphText;
@@ -46,6 +47,7 @@ public abstract class AbstractContentParser implements ContentParser {
             Logger.getLogger(AbstractContentParser.class.toString());
     private static boolean disableTransparencyGroups;
     private static boolean enabledOverPrint;
+    private static boolean enabledFontFallback;
 
     static {
         // decide if large images will be scaled
@@ -57,6 +59,10 @@ public abstract class AbstractContentParser implements ContentParser {
         enabledOverPrint =
                 Defs.sysPropertyBoolean("org.icepdf.core.enabledOverPrint",
                         true);
+
+        enabledFontFallback =
+                Defs.sysPropertyBoolean("org.icepdf.core.enabledFontFallback",
+                        false);
     }
 
     public static final float OVERPAINT_ALPHA = 0.4f;
@@ -999,7 +1005,6 @@ public abstract class AbstractContentParser implements ContentParser {
                                      LinkedList<OptionalContents> oCGs) {
         float y = ((Number) stack.pop()).floatValue();
         float x = ((Number) stack.pop()).floatValue();
-        double oldY = graphicState.getCTM().getTranslateY();
         graphicState.translate(-textMetrics.getShift(), 0);
         textMetrics.setShift(0);
         textMetrics.setPreviousAdvance(0);
@@ -1007,9 +1012,9 @@ public abstract class AbstractContentParser implements ContentParser {
         // x,y are expressed in unscaled but we don't scale until
         // a text showing operator is called.
         graphicState.translate(x, -y);
-        float newY = (float) graphicState.getCTM().getTranslateY();
         // capture x coord of BT y offset, tm, Td, TD.
         if (textMetrics.isYstart()) {
+            float newY = (float) graphicState.getCTM().getTranslateY();
             textMetrics.setyBTStart(newY);
             textMetrics.setYstart(false);
         }
@@ -1547,6 +1552,15 @@ public abstract class AbstractContentParser implements ContentParser {
         for (int i = 0; i < textLength; i++) {
             currentChar = displayText.charAt(i);
 
+            if (enabledFontFallback) {
+                boolean display = currentFont.canDisplayEchar(currentChar);
+                // slow display test, but allows us to fall back on a different font if needed.
+                if (!display) {
+                    FontFile fontFile = FontManager.getInstance().getInstance(currentFont.getName(), 0);
+                    textSprites.setFont(fontFile);
+                }
+            }
+
             // Position of the specified glyph relative to the origin of glyphVector
             // advance is handled by the particular font implementation.
             newAdvanceX = (float) currentFont.echarAdvance(currentChar).getX();
@@ -1677,8 +1691,16 @@ public abstract class AbstractContentParser implements ContentParser {
 
         // set the line width for the glyph
         float lineWidth = graphicState.getLineWidth();
-        lineWidth /= textState.tmatrix.getScaleX();
-        graphicState.setLineWidth(lineWidth);
+        double scale = textState.tmatrix.getScaleX();
+        // double check for a near zero value as it will really mess up the division result, zero is just fine.
+        if (scale > 0.001 || scale == 0) {
+            lineWidth /= scale;
+            graphicState.setLineWidth(lineWidth);
+        } else {
+            // corner case stroke adjustment,  still can't find anything in spec about this.
+            lineWidth *= scale * 100;
+            graphicState.setLineWidth(lineWidth);
+        }
         // update the stroke and add the text to shapes
         setStroke(shapes, graphicState);
         shapes.add(new ColorDrawCmd(graphicState.getStrokeColor()));
