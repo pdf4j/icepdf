@@ -43,14 +43,20 @@ package org.icepdf.core.pobjects.graphics;
  */
 
 import org.icepdf.core.pobjects.Name;
+import org.icepdf.core.util.Defs;
 
 import java.awt.*;
 import java.awt.image.ColorModel;
 import java.awt.image.DataBuffer;
 import java.awt.image.Raster;
 import java.awt.image.WritableRaster;
+import java.util.logging.Logger;
 
 public final class BlendComposite implements Composite {
+
+    private static final Logger logger =
+            Logger.getLogger(BlendComposite.class.toString());
+
     public enum BlendingMode {
         NORMAL,
         AVERAGE,
@@ -84,6 +90,16 @@ public final class BlendComposite implements Composite {
         SATURATION,
         COLOR,
         LUMINOSITY
+    }
+
+    // System property to disable blending modes other then AlphaComposite.  Oracle's MacOS Java implementation is
+    // throwing a not implemented exception on JDK 1.8.0_131 when a custom blend composite is set on the graphics
+    // graphics context.
+    private static boolean disableBlendComposite;
+    static {
+        // sets the shadow colour of the decorator.
+        disableBlendComposite = Defs.booleanProperty(
+                "org.icepdf.core.paint.disableBlendComposite", false);
     }
 
     public static final Name NORMAL_VALUE = new Name("Normal");
@@ -126,6 +142,14 @@ public final class BlendComposite implements Composite {
         if (alpha == -1) {
             alpha = 1;
         }
+        if(disableBlendComposite){
+            if (modeName.equals(MULTIPLY_VALUE)){
+                // simulate a basic multiply effect.
+                return AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.5f);
+            }
+            return AlphaComposite.getInstance(AlphaComposite.SRC_OVER, alpha);
+        }
+
         if (modeName.equals(NORMAL_VALUE) || modeName.equals(COMPATIBLE_VALUE)) {
             return AlphaComposite.getInstance(AlphaComposite.SRC_OVER, alpha);
 //            return new BlendComposite(BlendingMode.NORMAL, alpha);
@@ -812,11 +836,26 @@ public final class BlendComposite implements Composite {
                         }
                     };
                 case SOFT_LIGHT:
-                    break;
+                    return new Blender() {
+                        @Override
+                        public int[] blend(int[] src, int[] dst) {
+                            int mRed = src[0] * dst[0] / 255;
+                            int mGreen = src[1] * dst[1] / 255;
+                            int mBlue = src[2] * dst[2] / 255;
+                            return new int[]{
+                                    mRed + src[0] * (255 - ((255 - src[0]) * (255 - dst[0]) / 255) - mRed) / 255,
+                                    mGreen + src[1] * (255 - ((255 - src[1]) * (255 - dst[1]) / 255) - mGreen) / 255,
+                                    mBlue + src[2] * (255 - ((255 - src[2]) * (255 - dst[2]) / 255) - mBlue),
+                                    Math.min(255, src[3] + dst[3] - (src[3] * dst[3]) / 255)};
+                        }
+                    };
                 case STAMP:
                     return new Blender() {
                         @Override
                         public int[] blend(int[] src, int[] dst) {
+                            if (src[3] == 0) {
+                                return dst;
+                            }
                             return new int[]{
                                     Math.max(0, Math.min(255, dst[0] + 2 * src[0] - 256)),
                                     Math.max(0, Math.min(255, dst[1] + 2 * src[1] - 256)),
@@ -837,9 +876,18 @@ public final class BlendComposite implements Composite {
                             };
                         }
                     };
+                default:
+                    logger.finer("Blender not implement for " + composite.getMode().name());
+                    return new Blender() {
+                        @Override
+                        public int[] blend(int[] src, int[] dst) {
+                            if (src[3] == 0) {
+                                return dst;
+                            }
+                            return src;
+                        }
+                    };
             }
-            throw new IllegalArgumentException("Blender not implement for " +
-                    composite.getMode().name());
         }
     }
 }

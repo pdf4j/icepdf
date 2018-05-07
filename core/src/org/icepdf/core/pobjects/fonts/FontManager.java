@@ -18,7 +18,6 @@ package org.icepdf.core.pobjects.fonts;
 import org.icepdf.core.util.Defs;
 import org.icepdf.core.util.FontUtil;
 
-import java.awt.Font;
 import java.awt.*;
 import java.io.File;
 import java.io.IOException;
@@ -201,8 +200,7 @@ public class FontManager {
     /**
      * <p>Initializes the fontList by reading the system fonts paths via readSystemFonts()
      * but only if the fontList is null or is empty.  Generally the fontManager
-     * is used with the {@link org.icepdf.ri.util.FontPropertiesManager }
-     * </p>
+     * is used with the org.icepdf.ri.util.FontPropertiesManager
      *
      * @return instance of the singleton fontManager.
      */
@@ -216,7 +214,7 @@ public class FontManager {
     /**
      * <p>Gets a Properties object containing font information for the operating
      * system which the FontManager is running on.  This Properties object
-     * can be saved to disk and read at a later time using the {@see #setFontProperties}
+     * can be saved to disk and read at a later time using the {@link #setFontProperties}
      * method.</p>
      *
      * @return Properties object containing font data information.
@@ -575,7 +573,7 @@ public class FontManager {
      * Reads the specified resources from the specified package.  This method
      * is intended to aid in the packaging of fonts used for font substitution
      * and avoids the need to install fonts on the client operating system.
-     * <p/>
+     * <br>
      * The following font resource types are supported are support:
      * <ul>
      * <li>TrueType - *.ttf, *.dfont, *.ttc</li>
@@ -789,7 +787,7 @@ public class FontManager {
                         found = true;
                     }
                     // symbol type fonts don't have an associated style, so
-                    // no point trying to match  them based on style. 
+                    // no point trying to match  them based on style.
                     else if (baseName.contains("wingdings") ||
                             baseName.contains("zapfdingbats") ||
                             baseName.contains("dingbats") ||
@@ -1058,7 +1056,6 @@ public class FontManager {
      * @return a valid font if found, null otherwise
      */
     private java.awt.Font findAWTFont(String fontName) {
-
         java.awt.Font font = null;
         // references for system font list.
         Object[] fontData;
@@ -1120,8 +1117,19 @@ public class FontManager {
                                     " for: " + fontName);
                         }
                         try {
-                            font = java.awt.Font.createFont(Font.TRUETYPE_FONT,
-                                    new File((String) fontData[3]));
+                            // found true type font
+                            String fontPath = (String) fontData[3];
+                            String fontPathLower = fontPath.toLowerCase();
+                            if ( fontPathLower.endsWith(".ttf") ||  fontPathLower.endsWith(".dfont") ||
+                                    fontPathLower.endsWith(".ttc") ) {
+                                font = java.awt.Font.createFont(java.awt.Font.TRUETYPE_FONT,
+                                        new File(fontPath));
+                            }
+                            // found Type 1 font
+                            else if (fontPathLower.endsWith(".pfa") || fontPathLower.endsWith(".pfb")) {
+                                font = java.awt.Font.createFont(java.awt.Font.TYPE1_FONT,
+                                        new File(fontPath));
+                            }
                         } catch (FontFormatException e) {
                             logger.log(Level.FINE, "Error create new font", e);
                         } catch (IOException e) {
@@ -1149,12 +1157,13 @@ public class FontManager {
     private static int guessFontStyle(String name) {
         name = name.toLowerCase();
         int decorations = 0;
-        if ((name.indexOf("boldital") > 0) || (name.indexOf("demiital") > 0)) {
+        if ((name.indexOf("boldital") > 0) || (name.indexOf("demiital") > 0) ||
+                (name.indexOf("bold obli") > 0) || name.indexOf("bold ital") > 0|| name.indexOf("fett kursiv") > 0) {
             decorations |= BOLD_ITALIC;
         } else if (name.indexOf("bold") > 0 || name.indexOf("black") > 0 || name.endsWith("bt")
-                || name.indexOf("demi") > 0) {
+                || name.indexOf("demi") > 0|| name.indexOf("fett") > 0) {
             decorations |= BOLD;
-        } else if (name.indexOf("ital") > 0 || name.indexOf("obli") > 0) {
+        } else if (name.indexOf("ital") > 0 || name.indexOf("obli") > 0 || name.indexOf("kursiv") > 0) {
             decorations |= ITALIC;
         } else {
             decorations |= PLAIN;
