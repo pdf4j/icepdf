@@ -1,0 +1,56 @@
+<?xml version="1.0"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>org.icepdf.os</groupId>
+        <artifactId>core</artifactId>
+        <version>6.3.0</version>
+    </parent>
+    <artifactId>icepdf-core</artifactId>
+    <packaging>jar</packaging>
+    <name>ICEpdf OS :: Core :: Core Swing/AWT</name>
+    <description>
+        The ICEpdf Common rendering core. Contains AWT based rendering core.
+    </description>
+
+    <licenses>
+        <license>
+            <name>Apache License, Version 2.0</name>
+            <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <name>ICEsoft Technologies Canada Corp.</name>
+            <email>product.sales@icesoft.com</email>
+        </developer>
+    </developers>
+
+    <issueManagement>
+        <system>JIRA</system>
+        <url>http://jira.icesoft.org/browse/PDF/</url>
+    </issueManagement>
+
+    <build>
+        <finalName>icepdf-core-${version}</finalName>
+        <plugins>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>templating-maven-plugin</artifactId>
+                <version>1.0.0</version>
+                <executions>
+                    <execution>
+                        <id>generate-verion-class</id>
+                        <goals>
+                            <goal>filter-sources</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>

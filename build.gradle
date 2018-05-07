@@ -1,0 +1,89 @@
+apply plugin: 'distribution'
+apply plugin: 'project-report'
+
+allprojects {
+    apply plugin: 'java'
+
+    sourceCompatibility = '1.8'
+    targetCompatibility = '1.8'
+
+    repositories {
+        mavenCentral()
+        maven {
+            url "http://anonsvn.icesoft.org/repo/maven2/snapshots/"
+        }
+    }
+
+    tasks.withType(Javadoc) {
+        options.addStringOption('Xdoclint:none', '-quiet')
+    }
+}
+
+subprojects{
+    apply plugin: 'maven-publish'
+}
+
+evaluationDependsOn(':core:core-awt')
+
+defaultTasks 'taskReport', 'dependencyReport', 'sourcesJar', 'genPomFileForCoreJarPub', 'genPomFileForViewerJarPub','osDistZip', 'osDistTar'
+
+// Main distribution for os bundle
+distributions {
+    os {
+        baseName = 'icepdf-os'
+        version "${VERSION + (RELEASE_TYPE?.trim()? '-' + RELEASE_TYPE:'')}"
+        contents {
+            duplicatesStrategy = 'exclude'
+            into('libs-source') {
+                from 'core/core-awt/build/libs/'
+                from 'viewer/viewer-awt/build/libs/'
+                include '*-sources.jar'
+            }
+            into('libs') {
+                // dependency jars
+                def libs = []
+                libs << project(':core:core-awt').configurations.compile
+                libs << project(':viewer:viewer-awt').configurations.compile
+                from libs
+                from project(':core:core-awt').jar
+                from project(':viewer:viewer-awt').jar
+            }
+            // dependencies information
+            into('dependencies') {
+                from 'build/reports/project'
+            }
+            // licenses copy
+            into('licenses') {
+                from 'licenses'
+            }
+            // maven auto generated pom files.
+            into ('maven2') {
+                from 'core/core-awt/build/publications/coreJar/pom-default.xml'
+                rename { String fileName ->
+                    fileName.replace("pom-default.xml", "icepdf-core.xml")
+                }
+            }
+            into ('maven2') {
+                from 'viewer/viewer-awt/build/publications/viewerJar/pom-default.xml'
+                rename { String fileName ->
+                    fileName.replace("pom-default.xml", "icepdf-viewer.xml")
+                }
+            }
+            // examples
+//            into ('examples') {
+//                from 'examples'
+//            }
+            // readme.
+            into (''){
+                from 'readme.html'
+                filter(org.apache.tools.ant.filters.ReplaceTokens,
+                        tokens: [version: VERSION])
+            }
+        }
+    }
+}
+
+dependencies {
+    compile project(':core:core-awt')
+    compile project(':viewer:viewer-awt')
+}
